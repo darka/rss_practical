@@ -137,10 +137,10 @@ int motorcontrol_simple()
 	//CPhidgetMotorControl_setVelocity (motoControl, 1, 100.0);
         //
         
-        const double fastVelocity = -90.0;
-        const double slowVelocity = -8.0;
-        const double accel = -50.0;
-        const int ld = 5;
+        const double fastVelocity = -100.0;
+        const double slowVelocity = -20.0;
+        const double accel = -90.0;
+        const int ld = 4;
 
         //for (int i = 0; i < 2; ++i)
         //{
