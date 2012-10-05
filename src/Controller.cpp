@@ -100,17 +100,17 @@ void Controller::turnLeft()
         CPhidgetMotorControl_setAcceleration (motoControl, 0, 0);
 	CPhidgetMotorControl_setVelocity (motoControl, 0, 0);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, -speed);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, -accel);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, speed);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, accel);
 }
 
 void Controller::turnRight()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, 0);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, 0);
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, -speed);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, -accel);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, accel);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, speed);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, 0);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, 0);
 }
 
 void Controller::stop()

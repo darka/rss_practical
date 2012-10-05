@@ -4,6 +4,9 @@
 // A Simple Camera Capture Framework 
 int main() {
         CvCapture* capture = cvCaptureFromCAM( CV_CAP_ANY );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 320 );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 240 );
+        
         if ( !capture ) {
                 fprintf( stderr, "ERROR: capture is NULL \n" );
                 getchar();

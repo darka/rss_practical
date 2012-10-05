@@ -17,7 +17,7 @@ Main.o: Main.cpp Controller.o
 	g++ -c Main.cpp -o Main.o Controller.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21
 
 all: Main.o Controller.o
-	g++ -o Main Main.o Controller.o  -lphidget21
+	g++ -o Main Main.o Controller.o  -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc 
 	
 clean:
 	rm -rf EdgeDetection CameraCapture VideoStream Eight Main Controller
