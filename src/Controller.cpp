@@ -1,5 +1,6 @@
 #include "Controller.hpp"
 #include <iostream>
+#include <cassert>
 
 int AttachHandler(CPhidgetHandle MC, void *userptr)
 {
@@ -46,8 +47,8 @@ int CurrentChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index,
 
 Controller::Controller()
 : motoControl(0)
-, speed(-100)
-, accel(-100)
+, speed(-50)
+, accel(-50)
 {
 	//create the motor control object
 	CPhidgetMotorControl_create(&motoControl);
@@ -93,6 +94,27 @@ void Controller::moveBackward()
 
 	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel);
 	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed);
+}
+
+void Controller::turn(double angle)
+{
+        //assert(-90 <= angle && angle <= 90);
+        double normalAngle = angle / 90;
+               
+        if(normalAngle < 0){
+                CPhidgetMotorControl_setAcceleration (motoControl, 0, -speed* (1+normalAngle) );
+                CPhidgetMotorControl_setVelocity (motoControl, 0, -accel* (1+normalAngle) );
+
+                CPhidgetMotorControl_setAcceleration (motoControl, 1, speed* -normalAngle);
+                CPhidgetMotorControl_setVelocity (motoControl, 1, accel* -normalAngle);
+        }
+        else {
+                CPhidgetMotorControl_setAcceleration (motoControl, 0, -speed* normalAngle);
+	        CPhidgetMotorControl_setVelocity (motoControl, 0, -accel* normalAngle);
+
+	        CPhidgetMotorControl_setAcceleration (motoControl, 1, speed* (1-normalAngle));
+	        CPhidgetMotorControl_setVelocity (motoControl, 1, accel* (1-normalAngle));
+        }
 }
 
 void Controller::turnLeft()

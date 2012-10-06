@@ -13,6 +13,7 @@ public:
   void moveBackward();
   void turnLeft();
   void turnRight();
+  void turn(double angle);
   void stop();
   
   double speed;

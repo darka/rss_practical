@@ -1,9 +1,6 @@
 Eight: Eight.c
 	g++ Eight.c -o Eight -lphidget21
 
-VideoStream: VideoStream.cpp
-	g++ VideoStream.cpp -o VideoStream -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc
-	
 CameraCapture: CameraCapture.cpp
 	g++ CameraCapture.cpp -o CameraCapture -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc
 	
@@ -12,7 +9,13 @@ EdgeDetection: EdgeDetection.cpp
 	
 Controller.o: Controller.cpp Controller.hpp
 	g++ -c Controller.cpp -o Controller.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21
+	
+VideoStream.o: VideoStream.cpp Controller.o
+	g++ -c VideoStream.cpp -o VideoStream.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21 
 
+VideoStream: VideoStream.o Controller.o
+	g++ -o VideoStream VideoStream.o Controller.o  -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc 
+		
 Main.o: Main.cpp Controller.o
 	g++ -c Main.cpp -o Main.o Controller.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21
 

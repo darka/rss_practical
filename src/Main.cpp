@@ -19,10 +19,10 @@ int main()
 {
 
         Controller c;
-        /*
+        
         // Basic movement test
 
-        c.moveForward();
+        /*c.moveForward();
         sleep(2);
 
         c.turnLeft();
@@ -30,7 +30,7 @@ int main()
 
         c.turnRight();
         sleep(2);
-        */
+        
         CvCapture* capture = startCamera();
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
 
@@ -53,7 +53,14 @@ int main()
         }
         // Release the capture device housekeeping
         cvReleaseCapture( &capture );
-        cvDestroyWindow( "mywindow" );
+        cvDestroyWindow( "mywindow" );*/
+        
+        c.turn(90);
+        sleep(4);
+        c.turn(-90);
+        sleep(4);
+        c.turn(60);
+        sleep(4);
 
         c.stop();
 }
