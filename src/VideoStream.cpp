@@ -3,8 +3,10 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <algorithm>
+#include <vector>
 
-int calcHist(IplImage* img)
+
+int calcHist(IplImage* img, int* colors)
 {
         /* Always check if the program can find a file */
         if( !img )
@@ -121,10 +123,10 @@ int calcHist(IplImage* img)
                 CV_RGB(0,0,255), -1, 8, 0 );
         }
 
+        /*
         cvNamedWindow( "Image", 1 );
         cvShowImage( "Image",img);
 
-        /* create a window to show the histogram of the image */
         cvNamedWindow("Histogram", 1);
         cvShowImage( "Histogram", hist_img);
 
@@ -133,18 +135,81 @@ int calcHist(IplImage* img)
         cvDestroyWindow( "Image" );
         cvDestroyWindow( "Histogram" );
         cvReleaseImage( &img );
+        */
         std::cout << "max r: " << Rmax << " g: " << Gmax << " b: " << Bmax << '\n';
         std::cout << "max r: " << rm << " g: " << gm << " b: " << bm << '\n';
+        
+        colors[0] = rm;
+        colors[1] = gm;
+        colors[2] = bm;
         return 0;
+}
+
+bool isGround(IplImage* src, IplImage* dst, int* colors/*, std::vector<int>& odv*/)
+{
+        //assert(odv.size() == dst->width);
+        //cvShowImage( "mywindow", src );
+        //cvWaitKey(0);
+        const int range = 12;
+        IplImage* grid = dst;
+        //IplImage* grid = cvCreateImage(cvSize(src->width,src->height), IPL_DEPTH_8U, 1); 
+        
+        for (int i = 0; i < src->height; i++)
+        {
+                for (int k = 0; k < src->width; k += 1)
+                {
+                        int j = k * grid->nChannels;
+                        unsigned char red = src->imageData[i * src->widthStep + j + 2];
+                        unsigned char green = src->imageData[i * src->widthStep + j + 1];
+                        unsigned char blue = src->imageData[i * src->widthStep + j];
+                        //std::cout << ">>> r: " << ((int)red) << " g: " << ((int)green) << " b: " << ((int)blue) << ' ';
+                        if ((red <= colors[0] - range || red >= colors[0] + range) &&
+                            (green <= colors[1] - range || green >= colors[1] + range) &&
+                            (blue <= colors[2] - range || blue >= colors[2] + range))
+                        {
+//                                dst->imageData[i * dst->widthStep + j + 2] = 0;
+//                               dst->imageData[i * dst->widthStep + j + 1] = 255;
+                                const unsigned char value = 0;
+
+//                                ((uchar *)(grid->imageData + i * grid->widthStep))[j] = value;
+//                                ((uchar *)(grid->imageData + i * grid->widthStep))[j+1] = value;
+//                                ((uchar *)(grid->imageData + i * grid->widthStep))[j+2] = value;
+                                ((uchar *)(grid->imageData + i * grid->widthStep))[j] = blue;
+                                ((uchar *)(grid->imageData + i * grid->widthStep))[j+1] = green;
+                                ((uchar *)(grid->imageData + i * grid->widthStep))[j+2] = red;
+
+                               //std::cout << "\n";
+                        }
+                        else
+                        {
+                                const unsigned char value = 255;
+
+                                ((uchar *)(grid->imageData + i * grid->widthStep))[j] = value;
+                                ((uchar *)(grid->imageData + i * grid->widthStep))[j+1] = value;
+                                ((uchar *)(grid->imageData + i * grid->widthStep))[j+2] = value;
+                                //std::cout << "IN RANGE!\n";
+
+                        }
+                       
+                }
+        }
+
+
+        cvShowImage( "mywindow2", grid );
+        //cvWaitKey(0);
+        return true;
 }
 
 int main(int argc, char** argv) {
 
-        bool temp = true;
+        int temp = 20;
 
         CvCapture* capture = cvCaptureFromCAM( CV_CAP_ANY );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 320 );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 240 );
+        
+
+        
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 180 );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 135 );
         
         if ( !capture ) {
                 fprintf( stderr, "ERROR: capture is NULL \n" );
@@ -153,18 +218,33 @@ int main(int argc, char** argv) {
         }
         // Create a window in which the captured images will be presented
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
+        cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
-        while ( temp ) {
+        //std::vector<int> odv(180, 0);
+        while ( 1 ) {
                 // Get one frame
                 IplImage* frame = cvQueryFrame( capture );
+                IplImage* dst = cvCreateImage(cvSize(frame->width,frame->height),IPL_DEPTH_8U, frame->nChannels); 
+                //cvCopy( frame, dst, NULL );
+                
                 if ( !frame ) {
                         fprintf( stderr, "ERROR: frame is null...\n" );
                         getchar();
                         break;
                 }
                 //cvShowImage( "mywindow", frame );
-                calcHist(frame);
-                temp =false;
+                int colors[3] = {0, 0, 0};
+                
+                if(temp == 0){
+                        calcHist(frame, colors);
+                }
+                else
+                {
+                        temp -= 1;
+                }
+                isGround(frame, dst, colors/*, odv*/);
+                std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
+                cvReleaseImage(&dst);
                 
                 // Do not release the frame!
                 //If ESC key pressed, Key=0x10001B under OpenCV 0.9.7(linux version),
