@@ -3,8 +3,11 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <algorithm>
+#include <cstring>
 #include <vector>
 
+const int CAMERA_WIDTH = 180;
+const int CAMERA_HEIGHT = 135;
 
 int calcHist(IplImage* img, int* colors)
 {
@@ -93,19 +96,19 @@ int calcHist(IplImage* img, int* colors)
                 if (Rmax < cvRound(cvGetReal1D(hist_red->bins,i)) ){
                         rm = i;
                         Rmax = cvRound(cvGetReal1D(hist_red->bins,i));
-                        std::cout<< "rmax " << cvRound(cvGetReal1D(hist_red->bins,i)) << " i: " << i <<std::endl;
+                        //std::cout<< "rmax " << cvRound(cvGetReal1D(hist_red->bins,i)) << " i: " << i <<std::endl;
                 }
                 
                 if (Gmax < cvRound(cvGetReal1D(hist_green->bins,i)) ){
                         gm = i;
                         Gmax = cvRound(cvGetReal1D(hist_green->bins,i));
-                        std::cout<< "gmax " << cvRound(cvGetReal1D(hist_green->bins,i)) << " i: " << i <<std::endl;
+                        //std::cout<< "gmax " << cvRound(cvGetReal1D(hist_green->bins,i)) << " i: " << i <<std::endl;
                 }
                 
                 if (Bmax < cvRound(cvGetReal1D(hist_blue->bins,i)) ){
                         bm = i;
                         Bmax = cvRound(cvGetReal1D(hist_blue->bins,i));
-                        std::cout<< "bmax " << cvRound(cvGetReal1D(hist_blue->bins,i)) << " i: " << i <<std::endl;
+                        //std::cout<< "bmax " << cvRound(cvGetReal1D(hist_blue->bins,i)) << " i: " << i <<std::endl;
                 }
         
                 cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
@@ -136,8 +139,8 @@ int calcHist(IplImage* img, int* colors)
         cvDestroyWindow( "Histogram" );
         cvReleaseImage( &img );
         */
-        std::cout << "max r: " << Rmax << " g: " << Gmax << " b: " << Bmax << '\n';
-        std::cout << "max r: " << rm << " g: " << gm << " b: " << bm << '\n';
+        //std::cout << "max r: " << Rmax << " g: " << Gmax << " b: " << Bmax << '\n';
+        //std::cout << "max r: " << rm << " g: " << gm << " b: " << bm << '\n';
         
         colors[0] = rm;
         colors[1] = gm;
@@ -145,14 +148,14 @@ int calcHist(IplImage* img, int* colors)
         return 0;
 }
 
-bool isGround(IplImage* src, IplImage* dst, int* colors/*, std::vector<int>& odv*/)
+bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
 {
-        //assert(odv.size() == dst->width);
         //cvShowImage( "mywindow", src );
         //cvWaitKey(0);
         const int range = 12;
         IplImage* grid = dst;
         //IplImage* grid = cvCreateImage(cvSize(src->width,src->height), IPL_DEPTH_8U, 1); 
+        std::memset(odv, 0, sizeof(int));
         
         for (int i = 0; i < src->height; i++)
         {
@@ -177,7 +180,11 @@ bool isGround(IplImage* src, IplImage* dst, int* colors/*, std::vector<int>& odv
                                 ((uchar *)(grid->imageData + i * grid->widthStep))[j] = blue;
                                 ((uchar *)(grid->imageData + i * grid->widthStep))[j+1] = green;
                                 ((uchar *)(grid->imageData + i * grid->widthStep))[j+2] = red;
-
+                                if (odv[k] < i)
+                                {
+                                   odv[k] = i;
+                                   //std::cout << "height: " << i << '\n';  
+                                }  
                                //std::cout << "\n";
                         }
                         else
@@ -189,11 +196,17 @@ bool isGround(IplImage* src, IplImage* dst, int* colors/*, std::vector<int>& odv
                                 ((uchar *)(grid->imageData + i * grid->widthStep))[j+2] = value;
                                 //std::cout << "IN RANGE!\n";
 
+
                         }
                        
                 }
         }
-
+        std::cout << "odv: ";
+        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
+        {
+          std::cout << odv[i] << ' ';
+        }
+        std::cout << '\n';
 
         cvShowImage( "mywindow2", grid );
         //cvWaitKey(0);
@@ -208,8 +221,8 @@ int main(int argc, char** argv) {
         
 
         
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 180 );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 135 );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT );
         
         if ( !capture ) {
                 fprintf( stderr, "ERROR: capture is NULL \n" );
@@ -220,7 +233,13 @@ int main(int argc, char** argv) {
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
-        //std::vector<int> odv(180, 0);
+        
+        int odv[CAMERA_WIDTH];
+        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
+        {
+          odv[i] = 0;
+        }
+        
         while ( 1 ) {
                 // Get one frame
                 IplImage* frame = cvQueryFrame( capture );
@@ -242,8 +261,12 @@ int main(int argc, char** argv) {
                 {
                         temp -= 1;
                 }
-                isGround(frame, dst, colors/*, odv*/);
-                std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
+                for (size_t i = 0; i < CAMERA_WIDTH; ++i)
+                {
+                        odv[i] = 0;
+                }
+                isGround(frame, dst, colors, odv);
+                //std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
                 cvReleaseImage(&dst);
                 
                 // Do not release the frame!
