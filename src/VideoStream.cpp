@@ -13,7 +13,7 @@
 
 const int CAMERA_WIDTH = 180;
 const int CAMERA_HEIGHT = 135;
-const int CENTER_OFFSET = 40;
+const int CENTER_OFFSET = 0;
 
 int calcHist(IplImage* img, int* colors)
 {
@@ -158,8 +158,8 @@ int calcHist(IplImage* img, int* colors)
 
 bool inRange(unsigned char red, unsigned char green, unsigned char blue, int range, int* colors)
 {
-  return !((red <= colors[0] - range || red >= colors[0] + range) &&
-         (green <= colors[1] - range || green >= colors[1] + range) &&
+  return !((red <= colors[0] - range || red >= colors[0] + range) ||
+         (green <= colors[1] - range || green >= colors[1] + range) ||
          (blue <= colors[2] - range || blue >= colors[2] + range));
 }
 
@@ -167,7 +167,7 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
 {
         //cvShowImage( "mywindow", src );
         //cvWaitKey(0);
-        const int range = 9;
+        const int range = 20;
         IplImage* grid = dst;
         //IplImage* grid = cvCreateImage(cvSize(src->width,src->height), IPL_DEPTH_8U, 1); 
         cvSmooth(src, src, CV_GAUSSIAN, 3, 3);
@@ -333,21 +333,30 @@ double getFreeSpaceAngle(bool* moveable, int* odv, IplImage* img)
         std::cout << "begin: " << beginMax << " end: " << endMax << '\n';
         cvShowImage( "mywindow2", img );
         
-        int lowestY = CAMERA_HEIGHT;
+        int lowestY = img->height;
         for (size_t i = beginMax; i <= endMax; ++i)
         {
                 if (odv[i] < lowestY)
                         lowestY = odv[i];
         }
         
+        
         int goal_dist = (beginMax + endMax) / 2;
-        int bottom_dist = goal_dist - (180 / 2) + CENTER_OFFSET;
+        int bottom_dist = goal_dist - (img->width / 2) + CENTER_OFFSET;
+       
         
         double tan = (double)lowestY / (double)bottom_dist;
         
         double result = std::atan(tan);
         std::cout << "The arc tangent is: " <<  (result * 180 / PI) << '\n';
-        return result * 180 / PI;
+        result = result * 180 / PI;
+        
+        
+        if(distanceMax < 60){
+           result = 90;
+        }
+        
+        return result;
 }
 
 int main(int argc, char** argv) {
@@ -416,7 +425,7 @@ int main(int argc, char** argv) {
                 isGround(frame, dst, colors, odv);
                 double angle = getFreeSpaceAngle(moveable, odv, dst);
                 std::cout << "ANGLE: " << angle << '\n';
-                //ctrl.turn(angle);
+                ctrl.turn(angle);
                 //std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
                 cvReleaseImage(&dst);
 
