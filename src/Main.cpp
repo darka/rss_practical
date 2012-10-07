@@ -55,12 +55,12 @@ int main()
         cvReleaseCapture( &capture );
         cvDestroyWindow( "mywindow" );*/
         
-        c.turn(90);
+        /*c.turn(90);
         sleep(4);
         c.turn(-90);
         sleep(4);
         c.turn(60);
-        sleep(4);
+        sleep(4);*/
 
         c.stop();
 }

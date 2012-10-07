@@ -22,7 +22,7 @@ int calcHist(IplImage* img, int* colors)
         return -1;
 
         IplImage* channel = cvCreateImage( cvGetSize(img), 8, 1 );
-        IplImage *hist_img = cvCreateImage(cvSize(300,240), 8, 3);
+        IplImage *hist_img = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
         cvSet( hist_img, cvScalarAll(255), 0 );
 
         CvHistogram *hist_red;
@@ -167,10 +167,11 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
 {
         //cvShowImage( "mywindow", src );
         //cvWaitKey(0);
-        const int range = 13;
+        const int range = 9;
         IplImage* grid = dst;
         //IplImage* grid = cvCreateImage(cvSize(src->width,src->height), IPL_DEPTH_8U, 1); 
-
+        cvSmooth(src, src, CV_GAUSSIAN, 3, 3);
+        cvDilate(src, src, NULL, 5);
         
         for (int i = 0; i < src->height; i++)
         {
@@ -198,46 +199,54 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
                                 ((uchar *)(grid->imageData + i * grid->widthStep))[j+1] = value;
                                 ((uchar *)(grid->imageData + i * grid->widthStep))[j+2] = value;
                                 //std::cout << "IN RANGE!\n";
-
-
                         }
-                       
+                        //cvShowImage( "mywindow2", grid );                       
+                        //sleep(1);
                 }
         }
         
         std::memset(odv, 0, sizeof(int));
-        cvDilate(grid, grid, NULL, 4);
+
         
-        for (int i = 0; i < src->height; i++)
+        std::cout << "Drawing image: \n";
+        for (int i = 0; i < grid->height; i++)
         {
-                for (int k = 0; k < src->width; k += 1)
+                for (int k = 0; k < grid->width; k += 1)
                 {
                         int j = k * grid->nChannels;
-                        unsigned char red = src->imageData[i * src->widthStep + j + 2];
-                        unsigned char green = src->imageData[i * src->widthStep + j + 1];
-                        unsigned char blue = src->imageData[i * src->widthStep + j];
-                        if (!inRange(red, green, blue, range, colors))
+                        unsigned char red = grid->imageData[i * grid->widthStep + j + 2];
+                        unsigned char green = grid->imageData[i * grid->widthStep + j + 1];
+                        unsigned char blue = grid->imageData[i * grid->widthStep + j];
+                        if (red == 255 && green == 255 && blue == 255)
                         {
+                                std::cout << '1';
+
+                        } else 
+                        { 
+                                std::cout << '0'; 
                                 if (odv[k] < i)
                                 {
                                         odv[k] = i;
                                 }  
-                        }
+                       }
                       
                 }
+                std::cout << '\n';
         }
-        
-        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
-        {
-          odv[i] = CAMERA_HEIGHT - odv[i];
-        }
-        
+        std::cout << "Done!\n";
         std::cout << "odv: ";
         for (size_t i = 0; i < CAMERA_WIDTH; ++i)
         {
           std::cout << odv[i] << ' ';
         }
         std::cout << '\n';
+        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
+        {
+          odv[i] = grid->height - odv[i];
+        }
+        
+        std::cout << "origin: " << src->origin << '\n';
+
         
         //cvShowImage( "mywindow2", grid );
         //cvWaitKey(0);
@@ -246,12 +255,12 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
 
 double getFreeSpaceAngle(bool* moveable, int* odv, IplImage* img)
 {
-        const int freeSpaceThreshold = 50;
+        const int freeSpaceThreshold = 30;
         const int leftThreshold = 25;
         const int middleThreshold = 40;
         const int rightThreshold = 35;
 
-        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
+        for (size_t i = 0; i < img->width; ++i)
         {
                 if (odv[i] <= freeSpaceThreshold)
                 {
@@ -277,9 +286,9 @@ double getFreeSpaceAngle(bool* moveable, int* odv, IplImage* img)
         
         bool current = false;
         
-        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
+        for (size_t i = 0; i < img->width; ++i)
         {
-                if (current && i == CAMERA_WIDTH - 1 && moveable[i])
+                if (current && i == img->width - 1 && moveable[i])
                 {
                         end = i;
                         if (distance > distanceMax)
@@ -379,7 +388,9 @@ int main(int argc, char** argv) {
         
         while ( 1 ) {
                 // Get one frame
+                cvQueryFrame( capture );
                 IplImage* frame = cvQueryFrame( capture );
+                cvShowImage( "mywindow", frame );
                 IplImage* dst = cvCreateImage(cvSize(frame->width,frame->height),IPL_DEPTH_8U, frame->nChannels); 
                 //cvCopy( frame, dst, NULL );
                 
@@ -405,7 +416,7 @@ int main(int argc, char** argv) {
                 isGround(frame, dst, colors, odv);
                 double angle = getFreeSpaceAngle(moveable, odv, dst);
                 std::cout << "ANGLE: " << angle << '\n';
-                ctrl.turn(angle);
+                //ctrl.turn(angle);
                 //std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
                 cvReleaseImage(&dst);
 
@@ -417,5 +428,6 @@ int main(int argc, char** argv) {
         // Release the capture device housekeeping
         cvReleaseCapture( &capture );
         cvDestroyWindow( "mywindow" );
+        cvDestroyWindow( "mywindow2" );
         return 0;
 }
