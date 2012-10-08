@@ -158,18 +158,12 @@ int calcHist(IplImage* img, int* colors)
 
 bool inRange(unsigned char red, unsigned char green, unsigned char blue, int range, int* colors)
 {
-
-/*  return !((red <= colors[0] - range || red >= colors[0] + range) ||
+/*
+  return !((red <= colors[0] - range || red >= colors[0] + range) ||
          (green <= colors[1] - range || green >= colors[1] + range) ||
          (blue <= colors[2] - range || blue >= colors[2] + range));
 */
-/*
-        const char diffRange = 12;
-        if ( (max(red, blue) - min(red, blue) <= diffRange) &&
-             (max(green, blue) - min(green, blue) <= diffRange) &&
-             (max(green, red) - min(green, red) <= diffRange) )
-             return true;
-*/
+
 
         const char diffRange = 11;
         const char blackness = 70;
@@ -180,6 +174,7 @@ bool inRange(unsigned char red, unsigned char green, unsigned char blue, int ran
                  (max(green, red) - min(green, red))) >= diffRange )
              return false;
         return true;
+
 }
 
 bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
@@ -285,6 +280,8 @@ bool moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
         }
         double leftSpaceAverage = leftSpace / (img->width / 2.0);
         double rightSpaceAverage = rightSpace / (img->width / 2.0);
+        ctrl.moveBackward();
+        usleep(500);
         if (leftSpaceAverage < rightSpaceAverage)
         {
                 ctrl.moveBackwardLeft();
@@ -301,6 +298,9 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
         const int leftThreshold = 25;
         const int middleThreshold = 40;
         const int rightThreshold = 35;
+        
+        const int IRThreshold = 300;
+        const int WhiskerThreshold = 500;
 
         for (size_t i = 0; i < img->width; ++i)
         {
@@ -396,11 +396,17 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
                 result = result * 180 / PI;
         }
         
-        if (distanceMax < 10) {
+        int leftIR = ctrl.getIRLeftValue();
+        int rightIR = ctrl.getIRRightValue();
+        int whisker = ctrl.getWhiskerLeftValue();
+        
+        std::cout << "W: " << whisker << ", IR: " << leftIR << " | " << rightIR << '\n';
+        
+        if (distanceMax < 10 || leftIR > IRThreshold || rightIR > IRThreshold || whisker > WhiskerThreshold) {
                 moveBackConsideringFreeSpace(img, odv, ctrl);
                 return;
                 
-        }
+        }/* else {ctrl.stop();}*/
         
         if(distanceMax < 60){
            result = 90;
@@ -438,7 +444,7 @@ int main(int argc, char** argv) {
         // Create a window in which the captured images will be presented
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
-        cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
+        //cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
         
         int odv[CAMERA_WIDTH];
@@ -451,7 +457,7 @@ int main(int argc, char** argv) {
                 // Get one frame
                 //cvQueryFrame( capture );
                 IplImage* frame = cvQueryFrame( capture );
-                cvShowImage( "mywindow", frame );
+                
                 IplImage* dst = cvCreateImage(cvSize(frame->width,frame->height),IPL_DEPTH_8U, frame->nChannels); 
                 
                 
@@ -459,9 +465,10 @@ int main(int argc, char** argv) {
                 //cvCvtColor( frame, gray, CV_RGB2GRAY );
                 //cvShowImage( "mywindow3", gray );
                 
-                
+                //cvCvtColor(frame, frame, CV_BGR2HSV);
                 cvSmooth(frame, frame, CV_GAUSSIAN, 3, 3);
                 cvDilate(frame, frame, NULL, 5);
+                cvShowImage( "mywindow", frame );
                 //cvCopy( frame, dst, NULL );
                 
                 if ( !frame ) {

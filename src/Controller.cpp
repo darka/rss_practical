@@ -47,9 +47,10 @@ int CurrentChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index,
 
 Controller::Controller()
 : motoControl(0)
-, speed(-60)
-, accel(-60)
-, backwardTurnFactor(0.1)
+, speed(-100)
+, accel(-100)
+, backwardTurnFastFactor(1.0)
+, backwardTurnSlowFactor(0.1)
 {
 	//create the motor control object
 	CPhidgetMotorControl_create(&motoControl);
@@ -58,6 +59,28 @@ Controller::Controller()
 	CPhidget_set_OnAttach_Handler((CPhidgetHandle)motoControl, AttachHandler, NULL);
 	CPhidget_set_OnDetach_Handler((CPhidgetHandle)motoControl, DetachHandler, NULL);
 	CPhidget_set_OnError_Handler((CPhidgetHandle)motoControl, ErrorHandler, NULL);
+
+
+
+	ifKit = 0;
+
+	//create the InterfaceKit object
+	CPhidgetInterfaceKit_create(&ifKit);
+
+	//Set the handlers to be run when the device is plugged in or opened from software, unplugged or closed from software, or generates an error.
+	CPhidget_set_OnAttach_Handler((CPhidgetHandle)ifKit, AttachHandler, NULL);
+	CPhidget_set_OnDetach_Handler((CPhidgetHandle)ifKit, DetachHandler, NULL);
+	CPhidget_set_OnError_Handler((CPhidgetHandle)ifKit, ErrorHandler, NULL);
+
+	//open the interfacekit for device connections
+	CPhidget_open((CPhidgetHandle)ifKit, -1);
+	
+	int result;
+	const char *err;
+	if((result = CPhidget_waitForAttachment((CPhidgetHandle)ifKit, 10000)))
+	{
+		CPhidget_getErrorDescription(result, &err);
+	}
 
 	//Registers a callback that will run if an input changes.
 	//Requires the handle for the Phidget, the function that will be called, and a arbitrary pointer that will be supplied to the callback function (may be NULL).
@@ -77,6 +100,28 @@ Controller::Controller()
 	//get the program to wait for a motor control device to be attached
 	CPhidget_waitForAttachment((CPhidgetHandle)motoControl, 10000);
 
+}
+
+int Controller::getWhiskerLeftValue()
+{
+        int value;
+        CPhidgetInterfaceKit_getSensorValue(ifKit, 1, &value);
+        return value;
+}
+
+
+int Controller::getIRLeftValue()
+{
+        int value;
+        CPhidgetInterfaceKit_getSensorValue(ifKit, 1, &value);
+        return value;
+}
+
+int Controller::getIRRightValue()
+{
+        int value;
+        CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &value);
+        return value;
 }
 
 void Controller::moveForward()
@@ -99,20 +144,20 @@ void Controller::moveBackward()
 
 void Controller::moveBackwardLeft()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, accel * backwardTurnFactor);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, speed * backwardTurnFactor);
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, accel * backwardTurnSlowFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, speed * backwardTurnSlowFactor);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel*1.3);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed*1.3);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel*backwardTurnFastFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed*backwardTurnFastFactor);
 }
 
 void Controller::moveBackwardRight()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, accel*1.3);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, speed*1.3);
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, accel*backwardTurnFastFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, speed*backwardTurnFastFactor);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel * backwardTurnFactor);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed * backwardTurnFactor);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel * backwardTurnSlowFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed * backwardTurnSlowFactor);
 }
 
 void Controller::turn(double angle)

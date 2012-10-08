@@ -73,7 +73,16 @@ int main()
         */
         //c.moveForward();
         //sleep(2);
+        
+        /*
         c.turn(0);
         sleep(3);
+        c.stop();
+        */
+        
+        for (int i = 0; i < 10; ++i)
+        {
+                std::cout << "IR: " << c.getIRLeftValue() << " | " << c.getIRRightValue() << '\n';
+        }
         c.stop();
 }

@@ -18,10 +18,16 @@ public:
   void turn(double angle);
   void stop();
   
+  int getIRLeftValue();
+  int getIRRightValue();
+  int getWhiskerLeftValue();
+  
   double speed;
   double accel;
-  double backwardTurnFactor;
+  double backwardTurnSlowFactor;
+  double backwardTurnFastFactor;
   CPhidgetMotorControlHandle motoControl;
+  CPhidgetInterfaceKitHandle ifKit;
 };
 
 
