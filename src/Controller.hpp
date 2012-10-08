@@ -11,6 +11,8 @@ public:
   
   void moveForward();
   void moveBackward();
+  void moveBackwardLeft();
+  void moveBackwardRight();
   void turnLeft();
   void turnRight();
   void turn(double angle);
@@ -18,6 +20,7 @@ public:
   
   double speed;
   double accel;
+  double backwardTurnFactor;
   CPhidgetMotorControlHandle motoControl;
 };
 

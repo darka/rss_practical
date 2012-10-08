@@ -62,5 +62,18 @@ int main()
         c.turn(60);
         sleep(4);*/
 
+        //c.stop();
+
+        /*
+        c.moveBackwardLeft();
+        sleep(3);
+        c.stop();
+        c.moveBackwardRight();
+        sleep(3);
+        */
+        //c.moveForward();
+        //sleep(2);
+        c.turn(0);
+        sleep(3);
         c.stop();
 }

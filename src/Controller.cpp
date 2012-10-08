@@ -47,8 +47,9 @@ int CurrentChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index,
 
 Controller::Controller()
 : motoControl(0)
-, speed(-100)
-, accel(-100)
+, speed(-60)
+, accel(-60)
+, backwardTurnFactor(0.1)
 {
 	//create the motor control object
 	CPhidgetMotorControl_create(&motoControl);
@@ -96,6 +97,24 @@ void Controller::moveBackward()
 	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed);
 }
 
+void Controller::moveBackwardLeft()
+{
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, accel * backwardTurnFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, speed * backwardTurnFactor);
+
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel*1.3);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed*1.3);
+}
+
+void Controller::moveBackwardRight()
+{
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, accel*1.3);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, speed*1.3);
+
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel * backwardTurnFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed * backwardTurnFactor);
+}
+
 void Controller::turn(double angle)
 {
         //assert(-90 <= angle && angle <= 90);
@@ -110,7 +129,8 @@ void Controller::turn(double angle)
         }
         else
         {
-                double normalAngle = angle / 90;
+                moveForward();
+                /*double normalAngle = angle / 90;
                        
                 if(normalAngle < 0){
                         CPhidgetMotorControl_setAcceleration (motoControl, 0, -speed* (1+normalAngle) );
@@ -125,7 +145,7 @@ void Controller::turn(double angle)
 
         	        CPhidgetMotorControl_setAcceleration (motoControl, 1, speed* (1-normalAngle));
         	        CPhidgetMotorControl_setVelocity (motoControl, 1, accel* (1-normalAngle));
-                }
+                }*/
 
         }
 }

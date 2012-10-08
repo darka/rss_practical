@@ -158,20 +158,37 @@ int calcHist(IplImage* img, int* colors)
 
 bool inRange(unsigned char red, unsigned char green, unsigned char blue, int range, int* colors)
 {
-  return !((red <= colors[0] - range || red >= colors[0] + range) ||
+
+/*  return !((red <= colors[0] - range || red >= colors[0] + range) ||
          (green <= colors[1] - range || green >= colors[1] + range) ||
          (blue <= colors[2] - range || blue >= colors[2] + range));
+*/
+/*
+        const char diffRange = 12;
+        if ( (max(red, blue) - min(red, blue) <= diffRange) &&
+             (max(green, blue) - min(green, blue) <= diffRange) &&
+             (max(green, red) - min(green, red) <= diffRange) )
+             return true;
+*/
+
+        const char diffRange = 11;
+        const char blackness = 70;
+        if (red <= blackness || green <= blackness || blue <= blackness)
+                return false;
+        if ( max(max((max(red, blue) - min(red, blue)),
+                 (max(green, blue) - min(green, blue))),
+                 (max(green, red) - min(green, red))) >= diffRange )
+             return false;
+        return true;
 }
 
 bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
 {
         //cvShowImage( "mywindow", src );
         //cvWaitKey(0);
-        const int range = 20;
+        const int range = 13;
         IplImage* grid = dst;
         //IplImage* grid = cvCreateImage(cvSize(src->width,src->height), IPL_DEPTH_8U, 1); 
-        cvSmooth(src, src, CV_GAUSSIAN, 3, 3);
-        cvDilate(src, src, NULL, 5);
         
         for (int i = 0; i < src->height; i++)
         {
@@ -253,9 +270,34 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
         return true;
 }
 
-double getFreeSpaceAngle(bool* moveable, int* odv, IplImage* img)
+
+bool moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
 {
-        const int freeSpaceThreshold = 30;
+        int leftSpace = 0;
+        for (size_t i = 0; i < img->width / 2; ++i)
+        {
+             leftSpace += odv[i];
+        }
+        int rightSpace = 0;
+        for (size_t i = img->width / 2; i < img->width; ++i)
+        {
+             rightSpace += odv[i];
+        }
+        double leftSpaceAverage = leftSpace / (img->width / 2.0);
+        double rightSpaceAverage = rightSpace / (img->width / 2.0);
+        if (leftSpaceAverage < rightSpaceAverage)
+        {
+                ctrl.moveBackwardLeft();
+        }
+        else
+        {
+                ctrl.moveBackwardRight();
+        }
+}
+
+void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
+{
+        const int freeSpaceThreshold = 50;
         const int leftThreshold = 25;
         const int middleThreshold = 40;
         const int rightThreshold = 35;
@@ -344,19 +386,28 @@ double getFreeSpaceAngle(bool* moveable, int* odv, IplImage* img)
         int goal_dist = (beginMax + endMax) / 2;
         int bottom_dist = goal_dist - (img->width / 2) + CENTER_OFFSET;
        
+        std::cout << "lowestY: " << lowestY << ", bottom_dist: " << bottom_dist << ", img->width: " << img->width << '\n';
+        double result = 0;
+        if (bottom_dist > 0) {
+                double tan = (double)lowestY / (double)bottom_dist;
         
-        double tan = (double)lowestY / (double)bottom_dist;
+                result = std::atan(tan);
+                std::cout << "The arc tangent is: " <<  (result * 180 / PI) << '\n';
+                result = result * 180 / PI;
+        }
         
-        double result = std::atan(tan);
-        std::cout << "The arc tangent is: " <<  (result * 180 / PI) << '\n';
-        result = result * 180 / PI;
-        
+        if (distanceMax < 10) {
+                moveBackConsideringFreeSpace(img, odv, ctrl);
+                return;
+                
+        }
         
         if(distanceMax < 60){
            result = 90;
         }
+        std::cout << ">>> Angle: " << result << '\n';
         
-        return result;
+        ctrl.turn(result);
 }
 
 int main(int argc, char** argv) {
@@ -387,6 +438,7 @@ int main(int argc, char** argv) {
         // Create a window in which the captured images will be presented
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
+        cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
         
         int odv[CAMERA_WIDTH];
@@ -397,10 +449,19 @@ int main(int argc, char** argv) {
         
         while ( 1 ) {
                 // Get one frame
-                cvQueryFrame( capture );
+                //cvQueryFrame( capture );
                 IplImage* frame = cvQueryFrame( capture );
                 cvShowImage( "mywindow", frame );
                 IplImage* dst = cvCreateImage(cvSize(frame->width,frame->height),IPL_DEPTH_8U, frame->nChannels); 
+                
+                
+                //IplImage *gray = cvCreateImage( cvSize( frame->width, frame->height ), IPL_DEPTH_8U, 1 );
+                //cvCvtColor( frame, gray, CV_RGB2GRAY );
+                //cvShowImage( "mywindow3", gray );
+                
+                
+                cvSmooth(frame, frame, CV_GAUSSIAN, 3, 3);
+                cvDilate(frame, frame, NULL, 5);
                 //cvCopy( frame, dst, NULL );
                 
                 if ( !frame ) {
@@ -423,9 +484,10 @@ int main(int argc, char** argv) {
                         odv[i] = 0;
                 }
                 isGround(frame, dst, colors, odv);
-                double angle = getFreeSpaceAngle(moveable, odv, dst);
-                std::cout << "ANGLE: " << angle << '\n';
-                ctrl.turn(angle);
+                //double angle = getFreeSpaceAngle(moveable, odv, dst);
+                run(moveable, odv, dst, ctrl);
+                //std::cout << "ANGLE: " << angle << '\n';
+                //ctrl.turn(angle);
                 //std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
                 cvReleaseImage(&dst);
 
