@@ -165,7 +165,7 @@ bool inRange(unsigned char red, unsigned char green, unsigned char blue, int ran
 */
 
 
-        const char diffRange = 11;
+        const char diffRange = 14;
         const char blackness = 70;
         if (red <= blackness || green <= blackness || blue <= blackness)
                 return false;
@@ -260,7 +260,7 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
         std::cout << "origin: " << src->origin << '\n';
 
         
-        //cvShowImage( "mywindow2", grid );
+        cvShowImage( "mywindow", grid );
         //cvWaitKey(0);
         return true;
 }
@@ -284,11 +284,11 @@ bool moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
         usleep(500);
         if (leftSpaceAverage < rightSpaceAverage)
         {
-                ctrl.moveBackwardLeft();
+                ctrl.moveBackwardRight();
         }
         else
         {
-                ctrl.moveBackwardRight();
+                ctrl.moveBackwardLeft();
         }
 }
 
@@ -373,7 +373,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
         }
         cvLine(img, cvPoint((int)beginMax, 100), cvPoint((int)endMax, 100), CV_RGB(0,0,255));
         std::cout << "begin: " << beginMax << " end: " << endMax << '\n';
-        cvShowImage( "mywindow2", img );
+        //cvShowImage( "mywindow2", img );
         
         int lowestY = img->height;
         for (size_t i = beginMax; i <= endMax; ++i)
@@ -398,11 +398,12 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
         
         int leftIR = ctrl.getIRLeftValue();
         int rightIR = ctrl.getIRRightValue();
-        int whisker = ctrl.getWhiskerLeftValue();
+        int leftWhisker = ctrl.getWhiskerLeftValue();
+        int rightWhisker = ctrl.getWhiskerRightValue();
         
-        std::cout << "W: " << whisker << ", IR: " << leftIR << " | " << rightIR << '\n';
+        std::cout << "W: " << leftWhisker << " | " << rightWhisker << ", IR: " << leftIR << " | " << rightIR << '\n';
         
-        if (distanceMax < 10 || leftIR > IRThreshold || rightIR > IRThreshold || whisker > WhiskerThreshold) {
+        if (distanceMax < 10 || leftIR > IRThreshold || rightIR > IRThreshold || leftWhisker > WhiskerThreshold || rightWhisker > WhiskerThreshold) {
                 moveBackConsideringFreeSpace(img, odv, ctrl);
                 return;
                 
@@ -443,7 +444,7 @@ int main(int argc, char** argv) {
         }
         // Create a window in which the captured images will be presented
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
-        cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
+        //cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
         //cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
         
@@ -468,7 +469,11 @@ int main(int argc, char** argv) {
                 //cvCvtColor(frame, frame, CV_BGR2HSV);
                 cvSmooth(frame, frame, CV_GAUSSIAN, 3, 3);
                 cvDilate(frame, frame, NULL, 5);
-                cvShowImage( "mywindow", frame );
+                
+                
+                //cvShowImage( "mywindow", frame );
+                
+                
                 //cvCopy( frame, dst, NULL );
                 
                 if ( !frame ) {
@@ -505,7 +510,7 @@ int main(int argc, char** argv) {
         }
         // Release the capture device housekeeping
         cvReleaseCapture( &capture );
-        cvDestroyWindow( "mywindow" );
-        cvDestroyWindow( "mywindow2" );
+        //cvDestroyWindow( "mywindow" );
+        //cvDestroyWindow( "mywindow2" );
         return 0;
 }

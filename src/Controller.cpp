@@ -47,9 +47,9 @@ int CurrentChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index,
 
 Controller::Controller()
 : motoControl(0)
-, speed(-100)
-, accel(-100)
-, backwardTurnFastFactor(1.0)
+, speed(-60)
+, accel(-60)
+, backwardTurnFastFactor(1.2)
 , backwardTurnSlowFactor(0.1)
 {
 	//create the motor control object
@@ -102,26 +102,31 @@ Controller::Controller()
 
 }
 
-int Controller::getWhiskerLeftValue()
+int Controller::getSensorValue(int sensorId)
 {
         int value;
-        CPhidgetInterfaceKit_getSensorValue(ifKit, 1, &value);
+        CPhidgetInterfaceKit_getSensorValue(ifKit, sensorId, &value);
         return value;
 }
 
+int Controller::getWhiskerLeftValue()
+{
+        return getSensorValue(6);
+}
+
+int Controller::getWhiskerRightValue()
+{
+        return getSensorValue(7);
+}
 
 int Controller::getIRLeftValue()
 {
-        int value;
-        CPhidgetInterfaceKit_getSensorValue(ifKit, 1, &value);
-        return value;
+        return getSensorValue(1);
 }
 
 int Controller::getIRRightValue()
 {
-        int value;
-        CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &value);
-        return value;
+        return getSensorValue(0);
 }
 
 void Controller::moveForward()

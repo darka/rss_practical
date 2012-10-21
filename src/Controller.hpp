@@ -21,6 +21,7 @@ public:
   int getIRLeftValue();
   int getIRRightValue();
   int getWhiskerLeftValue();
+  int getWhiskerRightValue();
   
   double speed;
   double accel;
@@ -28,6 +29,9 @@ public:
   double backwardTurnFastFactor;
   CPhidgetMotorControlHandle motoControl;
   CPhidgetInterfaceKitHandle ifKit;
+  
+private:
+  int getSensorValue(int sensorId);
 };
 
 
