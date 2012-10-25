@@ -42,9 +42,9 @@ double angle( Point pt1, Point pt2, Point pt0 )
     return (dx1*dx2 + dy1*dy2)/sqrt((dx1*dx1 + dy1*dy1)*(dx2*dx2 + dy2*dy2) + 1e-10);
 }
 
-int ct1 = 5;
-int ct2 = 200;
-int app = 50;
+int ct1 = 71;
+int ct2 = 68;
+int app = 96;
 // returns sequence of squares detected on the image.
 // the sequence is stored in the specified memory storage
 void findSquares( IplImage* frame)
@@ -55,7 +55,11 @@ void findSquares( IplImage* frame)
     std::cout << "gray2\n";    
   //  cvtColor( image, gray0, CV_BGR2GRAY );
     cvCvtColor(frame,gray2,CV_BGR2GRAY);
-    
+
+ Mat grad;
+  Mat grad_x, grad_y;
+  Mat abs_grad_x, abs_grad_y;
+
     CvScalar avg;
     CvScalar avgStd;
     cvAvgSdv(gray2, &avg, &avgStd, NULL);
@@ -68,6 +72,23 @@ void findSquares( IplImage* frame)
     cvDilate(gray2, gray2, NULL, 2);
     std::cout << "gray0\n";
     Mat gray0(gray2, false);
+  int scale = 1;
+  int delta = 0;
+  int ddepth = CV_16S; 
+  /// Gradient X
+  //Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
+  Sobel( gray0, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+  convertScaleAbs( grad_x, abs_grad_x );
+
+  /// Gradient Y
+  //Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
+  Sobel( gray0, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+  convertScaleAbs( grad_y, abs_grad_y );
+
+  /// Total Gradient (approximate)
+  addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+  imshow( "mywindow", grad );
+  
     std::cout << "gray1\n";
     // karlphillip: dilate the image so this technique can detect the white square,
     Mat gray1;
@@ -76,7 +97,8 @@ void findSquares( IplImage* frame)
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
     
-    findContours(gray1, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+    //findContours(gray1, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+    findContours(grad, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
     Mat drawing = Mat::zeros( gray1.size(), CV_8UC3 );    
 
     vector<vector<Point> > squares;
@@ -94,14 +116,14 @@ void findSquares( IplImage* frame)
     int idx = 0;
     for( ; idx >= 0; idx = hierarchy[idx][0] )
     {
-        //double area = contourArea(Mat(squares[idx]));
-        //if(area > 300)
-        //{
+        double area = contourArea(Mat(squares[idx]));
+        if(area > 100)
+        {
         //std::cout << area << std::endl;
         //vector <Point> contour = squares[i];
         drawContours(gray1, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
         //drawContours(image, squares, -1, Scalar(255, 0, 0));
-        //}
+        }
 
     }
 
@@ -150,9 +172,9 @@ int main(int argc, char** argv) {
         // Create a window in which the captured images will be presented
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( wndname, CV_WINDOW_AUTOSIZE );
-        createTrackbar("T1", wndname, &ct1, 200);
-        createTrackbar("T2", wndname, &ct2, 200);
-        createTrackbar("APP", wndname, &app, 100);
+        //createTrackbar("T1", wndname, &ct1, 200);
+        //createTrackbar("T2", wndname, &ct2, 200);
+        //createTrackbar("APP", wndname, &app, 100);
         
         while ( 1 ) {
                 // Get one frame
@@ -167,9 +189,9 @@ int main(int argc, char** argv) {
                 }
                 
                 ///Mat filtered = edgeDetection(frame);
-                
+               
                 findSquares( frame );
-                //cvShowImage( "mywindow", frame );
+                
 
                 // Do not release the frame!
                 //If ESC key pressed, Key=0x10001B under OpenCV 0.9.7(linux version),
