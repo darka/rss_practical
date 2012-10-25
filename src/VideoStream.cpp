@@ -11,6 +11,7 @@
 #define PI 3.14159265
 //#include "controller.hpp"
 
+using namespace cv;
 const int CAMERA_WIDTH = 180;
 const int CAMERA_HEIGHT = 135;
 const int CENTER_OFFSET = 0;
@@ -292,7 +293,91 @@ bool moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
         }
 }
 
-void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
+void detectBoxes(IplImage* frame)
+{
+
+        IplImage* gray2;
+        gray2 = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
+        std::cout << "gray2\n";    
+        //  cvtColor( image, gray0, CV_BGR2GRAY );
+        cvCvtColor(frame,gray2,CV_BGR2GRAY);
+
+        
+        cv::Mat grad;
+        cv::Mat grad_x, grad_y;
+        cv::Mat abs_grad_x, abs_grad_y;
+
+        CvScalar avg;
+        CvScalar avgStd;
+        cvAvgSdv(gray2, &avg, &avgStd, NULL);
+        std::cout << "test\n";    
+        cvSmooth(gray2, gray2, CV_GAUSSIAN, 3, 3);
+        cvThreshold(gray2, gray2, (int)avg.val[0]-7*(int)(avgStd.val[0]/8), 255, CV_THRESH_BINARY_INV);
+
+        cvErode(gray2, gray2, NULL,1); 
+
+        cvDilate(gray2, gray2, NULL, 2);
+        std::cout << "gray0\n";
+        cv::Mat gray0(gray2, false);
+        int scale = 1;
+        int delta = 0;
+        int ddepth = CV_16S; 
+        /// Gradient X
+        //Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
+        Sobel( gray0, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+        convertScaleAbs( grad_x, abs_grad_x );
+
+        /// Gradient Y
+        //Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
+        Sobel( gray0, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+        convertScaleAbs( grad_y, abs_grad_y );
+
+        /// Total Gradient (approximate)
+        addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+        //imshow( "mywindow", grad );
+
+        std::cout << "gray1\n";
+        // karlphillip: dilate the image so this technique can detect the white square,
+        cv::Mat gray1;
+        Canny( gray0, gray1, 71, 68, 3 );
+        //imshow(wndname, gray1);
+        vector<vector<Point> > contours;
+        vector<Vec4i> hierarchy;
+
+        //findContours(gray1, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        findContours(grad, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        //Mat drawing = Mat::zeros( gray1.size(), CV_8UC3 );    
+
+        vector<vector<Point> > squares;
+
+        vector<Point> approx;
+        for (size_t i = 0; i < contours.size(); ++i)
+        {
+                approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/96), true);
+                squares.push_back(approx);
+        }
+
+
+
+
+        int idx = 0;
+        for( ; idx >= 0; idx = hierarchy[idx][0] )
+        {
+                double area = contourArea(Mat(squares[idx]));
+                if(area > 100)
+                {
+
+                        drawContours(gray1, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+
+                }
+
+        }
+        
+        imshow("mywindow2", gray1);
+
+}
+
+void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* normalCapture)
 {
         const int freeSpaceThreshold = 50;
         const int leftThreshold = 25;
@@ -314,8 +399,12 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
                         moveable[i] = true;
                         std::cout << '1';
                 }
-
         }
+        
+
+        // BOX DETECTION!!
+        detectBoxes(normalCapture);        
+        
         std::cout << '\n';        
 
         size_t beginMax = 0;
@@ -404,7 +493,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
         std::cout << "W: " << leftWhisker << " | " << rightWhisker << ", IR: " << leftIR << " | " << rightIR << '\n';
         
         if (distanceMax < 10 || leftIR > IRThreshold || rightIR > IRThreshold || leftWhisker > WhiskerThreshold || rightWhisker > WhiskerThreshold) {
-                moveBackConsideringFreeSpace(img, odv, ctrl);
+                //moveBackConsideringFreeSpace(img, odv, ctrl);
                 return;
                 
         }/* else {ctrl.stop();}*/
@@ -414,7 +503,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl)
         }
         std::cout << ">>> Angle: " << result << '\n';
         
-        ctrl.turn(result);
+        //ctrl.turn(result);
 }
 
 int main(int argc, char** argv) {
@@ -432,10 +521,14 @@ int main(int argc, char** argv) {
 
         CvCapture* capture = cvCaptureFromCAM( CV_CAP_ANY );
         
-
+//hdCapture
         
         cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH );
         cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT );
+        
+        //CvCapture* hdCapture = cvCaptureFromCAM( CV_CAP_ANY );
+        //cvSetCaptureProperty( hdCapture, CV_CAP_PROP_FRAME_WIDTH, 352 );
+        //cvSetCaptureProperty( hdCapture, CV_CAP_PROP_FRAME_HEIGHT, 288 );
         
         if ( !capture ) {
                 fprintf( stderr, "ERROR: capture is NULL \n" );
@@ -444,8 +537,9 @@ int main(int argc, char** argv) {
         }
         // Create a window in which the captured images will be presented
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
-        //cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
-        //cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
+        cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
+        cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
+        cvNamedWindow( "mywindow4", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
         
         int odv[CAMERA_WIDTH];
@@ -457,8 +551,9 @@ int main(int argc, char** argv) {
         while ( 1 ) {
                 // Get one frame
                 //cvQueryFrame( capture );
-                IplImage* frame = cvQueryFrame( capture );
-                
+                IplImage* orig = cvQueryFrame( capture );
+
+                IplImage* frame = cvCreateImage(cvSize(orig->width,orig->height),IPL_DEPTH_8U, orig->nChannels);                 
                 IplImage* dst = cvCreateImage(cvSize(frame->width,frame->height),IPL_DEPTH_8U, frame->nChannels); 
                 
                 
@@ -467,7 +562,7 @@ int main(int argc, char** argv) {
                 //cvShowImage( "mywindow3", gray );
                 
                 //cvCvtColor(frame, frame, CV_BGR2HSV);
-                cvSmooth(frame, frame, CV_GAUSSIAN, 3, 3);
+                cvSmooth(orig, frame, CV_GAUSSIAN, 3, 3);
                 cvDilate(frame, frame, NULL, 5);
                 
                 
@@ -481,7 +576,8 @@ int main(int argc, char** argv) {
                         getchar();
                         break;
                 }
-                //cvShowImage( "mywindow", frame );
+                cvShowImage( "mywindow4", orig );
+                cvShowImage( "mywindow3", frame );
                 int colors[3] = {0, 0, 0};
                 
                 if(temp == 0){
@@ -497,7 +593,7 @@ int main(int argc, char** argv) {
                 }
                 isGround(frame, dst, colors, odv);
                 //double angle = getFreeSpaceAngle(moveable, odv, dst);
-                run(moveable, odv, dst, ctrl);
+                run(moveable, odv, dst, ctrl, orig);
                 //std::cout << "ANGLE: " << angle << '\n';
                 //ctrl.turn(angle);
                 //std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
@@ -510,7 +606,8 @@ int main(int argc, char** argv) {
         }
         // Release the capture device housekeeping
         cvReleaseCapture( &capture );
-        //cvDestroyWindow( "mywindow" );
-        //cvDestroyWindow( "mywindow2" );
+        cvDestroyWindow( "mywindow" );
+        cvDestroyWindow( "mywindow2" );
+        cvDestroyWindow( "mywindow3" );
         return 0;
 }

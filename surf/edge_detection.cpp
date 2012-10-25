@@ -92,7 +92,7 @@ void findSquares( IplImage* frame)
     std::cout << "gray1\n";
     // karlphillip: dilate the image so this technique can detect the white square,
     Mat gray1;
-    Canny( gray0, gray1, ct1, ct2, 3 );
+    Canny( gray0, gray1, 71, 68, 3 );
     //imshow(wndname, gray1);
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
@@ -106,7 +106,7 @@ void findSquares( IplImage* frame)
     vector<Point> approx;
     for (size_t i = 0; i < contours.size(); ++i)
     {
-                approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/app), true);
+                approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/96), true);
                 squares.push_back(approx);
     }
 
@@ -161,8 +161,8 @@ Mat edgeDetection(IplImage* frame)
 int main(int argc, char** argv) {
 
         CvCapture* capture = cvCaptureFromCAM( CV_CAP_ANY );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 352 );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 288 );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 180 );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 135 );
         
         if ( !capture ) {
                 fprintf( stderr, "ERROR: capture is NULL \n" );
