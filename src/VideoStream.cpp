@@ -221,7 +221,7 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
         std::memset(odv, 0, sizeof(int));
 
         
-        std::cout << "Drawing image: \n";
+        //std::cout << "Drawing image: \n";
         for (int i = 0; i < grid->height; i++)
         {
                 for (int k = 0; k < grid->width; k += 1)
@@ -232,11 +232,11 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
                         unsigned char blue = grid->imageData[i * grid->widthStep + j];
                         if (red == 255 && green == 255 && blue == 255)
                         {
-                                std::cout << '1';
+                                //std::cout << '1';
 
                         } else 
                         { 
-                                std::cout << '0'; 
+                                //std::cout << '0'; 
                                 if (odv[k] < i)
                                 {
                                         odv[k] = i;
@@ -244,15 +244,17 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
                        }
                       
                 }
-                std::cout << '\n';
+                //std::cout << '\n';
         }
-        std::cout << "Done!\n";
+        
+        /*
         std::cout << "odv: ";
         for (size_t i = 0; i < CAMERA_WIDTH; ++i)
         {
           std::cout << odv[i] << ' ';
         }
         std::cout << '\n';
+        */
         for (size_t i = 0; i < CAMERA_WIDTH; ++i)
         {
           odv[i] = grid->height - odv[i];
@@ -293,12 +295,40 @@ bool moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
         }
 }
 
-void detectBoxes(IplImage* frame)
+double variance(vector<Point>& vec)
+{
+        double meanX = 0;
+        double meanY = 0;
+        for (size_t i = 0; i < vec.size(); ++i)
+        {
+                Point& p = vec[i];
+                meanX += p.x;
+                meanY += p.y;
+        }
+        meanX /= vec.size();
+        meanY /= vec.size();
+        double meanXs = 0;
+        double meanYs = 0;
+        for (size_t i = 0; i < vec.size(); ++i)
+        {
+                Point& p = vec[i];
+                meanXs += p.x*p.x;
+                meanYs += p.y*p.y;
+        }
+        meanXs /= vec.size();
+        meanYs /= vec.size();
+        
+        double retX = meanXs - meanX * meanX;
+        double retY = meanYs - meanY * meanY;
+        std::cout << "var: " << retX << ", " << retY << '\n';
+        return 0;
+} 
+void detectBoxes(IplImage* frame, int* boxVec)
 {
 
         IplImage* gray2;
         gray2 = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
-        std::cout << "gray2\n";    
+   
         //  cvtColor( image, gray0, CV_BGR2GRAY );
         cvCvtColor(frame,gray2,CV_BGR2GRAY);
 
@@ -310,14 +340,15 @@ void detectBoxes(IplImage* frame)
         CvScalar avg;
         CvScalar avgStd;
         cvAvgSdv(gray2, &avg, &avgStd, NULL);
-        std::cout << "test\n";    
-        cvSmooth(gray2, gray2, CV_GAUSSIAN, 3, 3);
+
+        //cvSmooth(gray2, gray2, CV_GAUSSIAN, 3, 3);
         cvThreshold(gray2, gray2, (int)avg.val[0]-7*(int)(avgStd.val[0]/8), 255, CV_THRESH_BINARY_INV);
 
-        cvErode(gray2, gray2, NULL,1); 
+        //cvErode(gray2, gray2, NULL,1); 
 
-        cvDilate(gray2, gray2, NULL, 2);
-        std::cout << "gray0\n";
+        //cvDilate(gray2, gray2, NULL, 2);
+        
+        
         cv::Mat gray0(gray2, false);
         int scale = 1;
         int delta = 0;
@@ -336,17 +367,21 @@ void detectBoxes(IplImage* frame)
         addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
         //imshow( "mywindow", grad );
 
-        std::cout << "gray1\n";
+
         // karlphillip: dilate the image so this technique can detect the white square,
         cv::Mat gray1;
         Canny( gray0, gray1, 71, 68, 3 );
         //imshow(wndname, gray1);
         vector<vector<Point> > contours;
         vector<Vec4i> hierarchy;
+        
+        //imshow("preBoxDetection", gray0);
+        //imshow("preBoxDetectionsssssss", grad);
+        
 
         //findContours(gray1, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        findContours(grad, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        //Mat drawing = Mat::zeros( gray1.size(), CV_8UC3 );    
+        findContours(gray0, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        Mat drawing = Mat::zeros( gray1.size(), CV_8UC1 );    
 
         vector<vector<Point> > squares;
 
@@ -358,26 +393,246 @@ void detectBoxes(IplImage* frame)
         }
 
 
-
+        Size drawingSize = drawing.size();
 
         int idx = 0;
         for( ; idx >= 0; idx = hierarchy[idx][0] )
         {
-                double area = contourArea(Mat(squares[idx]));
-                if(area > 100)
-                {
+                Mat m(squares[idx]);
+                double area = contourArea(m);
+                cv::RotatedRect box = cv::minAreaRect(m);
+                
+                cv::Point2f rBPts[4];
+                box.points(rBPts);
+                float min_x = rBPts[0].x;
+                float max_x = rBPts[0].x;
+                float min_y = rBPts[0].y;
+                float max_y = rBPts[0].y;
 
-                        drawContours(gray1, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+                for(int i = 0; i < 3 ; i++){
 
+                        if(rBPts[i+1].y > max_y){
+                                max_y = rBPts[i+1].y;
+                        }
+
+                        if(rBPts[i+1].y < min_y){
+                                min_y = rBPts[i+1].y;
+                        }
+                        if(rBPts[i+1].x > max_x){
+                                max_x = rBPts[i+1].x;
+                        }
+                        if(rBPts[i+1].x < min_x){
+                                min_x = rBPts[i+1].x;
+                        }
+                        
                 }
+                
+                float width = max_x - min_x;
+                float height = max_y - min_y;
+                float ratio = width / height;
+                float boundingBoxArea = width * height;
+
+
+
+
+
+
+                std::cout << idx << ": " << area << ", " << ratio << ", " << boundingBoxArea <<  '\n';                
+                //variance(squares[idx]);
+                int edgeProximityThreshold = 2;
+                bool tooCloseToEdge = false;
+                for (size_t i = 0; i < squares[idx].size(); ++i)
+                {
+                        Point& p = squares[idx][i];
+                        if (p.x <= edgeProximityThreshold || drawingSize.width - p.x <= edgeProximityThreshold)
+                        {
+                                tooCloseToEdge = true;
+                                break;
+                        }        
+                        if (p.y <= edgeProximityThreshold/* || drawingSize.height - p.y <= edgeProximityThreshold*/)
+                        {
+                                tooCloseToEdge = true;
+                                break;
+                        }        
+                }
+                
+//                if (tooCloseToEdge) continue;
+                
+                if(2000 > area && area > 20 && 1.6f > ratio && ratio > 0.4f && boundingBoxArea < 2*area)
+                {
+                        drawContours(drawing, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+                        
+                        // Transform it into the C++ cv::Mat format
+                        cv::Mat interestingImage(frame); 
+
+                        // Setup a rectangle to define your region of interest
+                        cv::Rect myROI(min_x, min_y, width, height);
+
+                        // Crop the full image to that image contained by the rectangle myROI
+                        // Note that this doesn't copy the data
+                        cv::Mat croppedImage = interestingImage(myROI);
+                        imshow("mywindow5", croppedImage);
+                
+                }
+        }
+        
+        Mat& drawingScaled = drawing;
+        //Mat drawingScaled = Mat::zeros( Size(CAMERA_WIDTH, CAMERA_HEIGHT), CV_8UC1 ); 
+        //cv::resize(drawing, drawingScaled, Size(CAMERA_WIDTH, CAMERA_HEIGHT), 0, 0, INTER_NEAREST);
+        imshow("mywindow2", drawingScaled);
+        std::memset(boxVec, 0, sizeof(int));
+        
+        //std::cout << "Drawing image: \n";
+
+
+        //int boxVecTemp[drawing.cols];
+        std::memset(boxVec, 0, sizeof(int)*drawingScaled.cols);
+        std::cout << "rc: " << drawingScaled.rows << ", " << drawingScaled.cols << '\n';
+        for (int i = 0; i < drawingScaled.rows; i++)
+        {
+                for (int k = 0; k < drawingScaled.cols; k += 1)
+                {
+                        unsigned char pixel = drawingScaled.at<char>(i, k);
+                        if (pixel == 255)
+                        {
+                                if (boxVec[k] < i)
+                                {
+                                        boxVec[k] = i;
+                                }  
+                                //std::cout << 1;
+                        } 
+                        //else { std::cout << 0; }
+                }
+                //std::cout << '\n';
 
         }
         
-        imshow("mywindow2", gray1);
+        
+        std::cout << '\n';
 
+        std::cout << "box: ";
+        for (size_t i = 0; i < drawingScaled.cols; ++i)
+        {
+                //if (boxVec[i] > 0) 
+                //    boxVec[i] = 1;
+                std::cout << boxVec[i];    
+        }
+        std::cout << '\n';
 }
 
-void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* normalCapture)
+std::pair<size_t, size_t> longestLine(int* boxVec, size_t size)
+{
+        size_t beginMax = 0;
+        size_t distanceMax = 0;
+        size_t endMax = 0;
+                
+        size_t begin = 0;
+        size_t distance = 0;
+        size_t end = 0;
+        
+        bool current = false;
+        
+        for (size_t i = 0; i < size; ++i)
+        {
+                if (current && i == size - 1 && boxVec[i])
+                {
+                        end = i;
+                        if (distance > distanceMax)
+                        {
+                                beginMax = begin;
+                                endMax = end;
+                                distanceMax = distance;
+                        }
+                }
+                if (boxVec[i])
+                {
+                        if (current)
+                        {
+                                distance++;
+                                end = i;
+                        }
+                        else
+                        {
+                                distance = 1;
+                                begin = i;
+                                end = begin;
+                                current = true;
+                        }
+                }
+
+                else
+                {
+                        if (current)
+                        {
+                                current = false;
+                                if (distance > distanceMax)
+                                {
+                                        beginMax = begin;
+                                        endMax = end;
+                                        distanceMax = distance;
+                                }
+                        }
+                        
+                }
+        }
+        std::pair<size_t, size_t> ret;
+        ret.first = beginMax;
+        ret.second = endMax;
+        return ret;
+}
+
+
+void stopAndRotate(Controller& ctrl)
+{
+        std::cout << "stopping and rotating...\n";
+        ctrl.stop(); 
+        usleep(4000);
+        ctrl.turn(90); 
+        usleep(1000);
+        ctrl.turn(90); 
+        usleep(1000);
+}
+
+struct BoxHistory
+{
+        BoxHistory()
+        {
+                std::memset(history, 0, sizeof(bool)*boxHistorySize);
+                boxHistoryIndex = 0;
+        }
+        void update(bool value)
+        {
+                history[boxHistoryIndex] = value;
+                boxHistoryIndex++;
+                boxHistoryIndex %= boxHistorySize;
+        }
+        
+        bool movingTowardsBox()
+        {
+                
+                size_t movingTowardsBoxSum = 0;
+                for (size_t i = 0; i < boxHistorySize; ++i)
+                {
+                        if (history[i]) movingTowardsBoxSum += 1;
+                }
+                std::cout << "--- Box detected over the last " << movingTowardsBoxSum << " frames.\n";
+                if (movingTowardsBoxSum >= movingTowardsBoxThreshold)
+                {
+                        std::cout << "MOVING TOWARDS BOX!!\n";
+                        return true;
+                }
+                else 
+                {
+                        return false;  
+                }
+        }
+        static size_t const boxHistorySize = 20;
+        bool history[boxHistorySize]; 
+        size_t boxHistoryIndex;
+        static size_t const movingTowardsBoxThreshold = 12;
+};
+
+void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& boxHistory, IplImage* normalCapture, int* boxVec)
 {
         const int freeSpaceThreshold = 50;
         const int leftThreshold = 25;
@@ -386,6 +641,12 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         
         const int IRThreshold = 300;
         const int WhiskerThreshold = 500;
+        
+        
+        
+
+        
+        
 
         for (size_t i = 0; i < img->width; ++i)
         {
@@ -400,12 +661,28 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
                         std::cout << '1';
                 }
         }
-        
+        std::cout << '\n';
 
         // BOX DETECTION!!
-        detectBoxes(normalCapture);        
+        detectBoxes(normalCapture, boxVec);        
+        std::pair<size_t, size_t> boxLine = longestLine(boxVec, img->width);
+        bool moveTowardsBox;
+        int minBoxDistance = img->height;
+        if (boxLine.second - boxLine.first == 0) 
+        {
+                moveTowardsBox = false;
+        }
+        else
+        {
+                moveTowardsBox = true;
+                for (size_t i = boxLine.first; i < boxLine.second; ++i)
+                {
+                        minBoxDistance = min(minBoxDistance, boxVec[i]);
+                }
+
+        }
         
-        std::cout << '\n';        
+        std::cout << "boxline: " << boxLine.first << ' '<< boxLine.second << '\n';
 
         size_t beginMax = 0;
         size_t distanceMax = 0;
@@ -477,12 +754,32 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
        
         std::cout << "lowestY: " << lowestY << ", bottom_dist: " << bottom_dist << ", img->width: " << img->width << '\n';
         double result = 0;
-        if (bottom_dist > 0) {
-                double tan = (double)lowestY / (double)bottom_dist;
+        if (moveTowardsBox)
+        {
+                boxHistory.update(true);
+                int line_mid = (boxLine.first + boxLine.second) / 2;
+                int bottom_box_dist = line_mid - (img->width / 2) + CENTER_OFFSET;
+                double tanbox = (double)minBoxDistance / (double)bottom_box_dist;
         
-                result = std::atan(tan);
-                std::cout << "The arc tangent is: " <<  (result * 180 / PI) << '\n';
+                result = std::atan(tanbox);
+                std::cout << "BOX LOCATED!!! The arc tangent is: " <<  (result * 180 / PI) << '\n';
                 result = result * 180 / PI;
+        }
+        else if (bottom_dist > 0) 
+        {
+                if (boxHistory.movingTowardsBox())
+                {
+                        result = 0;
+                }
+                else
+                {
+                        boxHistory.update(false);
+                        double tan = (double)lowestY / (double)bottom_dist;
+                
+                        result = std::atan(tan);
+                        std::cout << "The arc tangent is: " <<  (result * 180 / PI) << '\n';
+                        result = result * 180 / PI;
+                }        
         }
         
         int leftIR = ctrl.getIRLeftValue();
@@ -492,8 +789,53 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         
         std::cout << "W: " << leftWhisker << " | " << rightWhisker << ", IR: " << leftIR << " | " << rightIR << '\n';
         
-        if (distanceMax < 10 || leftIR > IRThreshold || rightIR > IRThreshold || leftWhisker > WhiskerThreshold || rightWhisker > WhiskerThreshold) {
+        bool moveBack = false;
+        if (distanceMax < 10)
+        {
+                moveBack = true;
+                std::cout << "Moving back: camera facing wall\n";
+        }
+        if (leftIR > IRThreshold)
+        {
+                moveBack = true;
+                std::cout << "Moving back: left IR\n";
+        }
+        if (rightIR > IRThreshold)
+        {
+                moveBack = true;
+                std::cout << "Moving back: right IR\n";
+        }
+        if (leftWhisker > WhiskerThreshold)
+        {
+                if (boxHistory.movingTowardsBox())
+                {
+                        //stopAndRotate(ctrl);
+                }
+                else
+                {
+                        std::cout << "Moving back: left whisker\n";
+                        moveBack = true;
+                }
+                        
+                
+        }
+        if (rightWhisker > WhiskerThreshold)
+        {
+                if (boxHistory.movingTowardsBox())
+                {
+                        //stopAndRotate(ctrl);
+                }
+                else
+                {
+                        moveBack = true;
+                        std::cout << "Moving back: right whisker\n";
+                }        
+        }
+        
+        if (moveBack)
+        {
                 //moveBackConsideringFreeSpace(img, odv, ctrl);
+                boxHistory.update(false);
                 return;
                 
         }/* else {ctrl.stop();}*/
@@ -540,14 +882,18 @@ int main(int argc, char** argv) {
         cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow4", CV_WINDOW_AUTOSIZE );
+        cvNamedWindow( "mywindow5", CV_WINDOW_AUTOSIZE );
+        //cvNamedWindow( "preBoxDetection", CV_WINDOW_AUTOSIZE );
+        //cvNamedWindow( "preBoxDetectionsssssss", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
         
         int odv[CAMERA_WIDTH];
+        int boxVec[CAMERA_WIDTH];
         for (size_t i = 0; i < CAMERA_WIDTH; ++i)
         {
           odv[i] = 0;
         }
-        
+        BoxHistory boxHistory;
         while ( 1 ) {
                 // Get one frame
                 //cvQueryFrame( capture );
@@ -593,7 +939,7 @@ int main(int argc, char** argv) {
                 }
                 isGround(frame, dst, colors, odv);
                 //double angle = getFreeSpaceAngle(moveable, odv, dst);
-                run(moveable, odv, dst, ctrl, orig);
+                run(moveable, odv, dst, ctrl, boxHistory, orig, boxVec);
                 //std::cout << "ANGLE: " << angle << '\n';
                 //ctrl.turn(angle);
                 //std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
@@ -609,5 +955,8 @@ int main(int argc, char** argv) {
         cvDestroyWindow( "mywindow" );
         cvDestroyWindow( "mywindow2" );
         cvDestroyWindow( "mywindow3" );
+        cvDestroyWindow( "mywindow4" );
+        cvDestroyWindow( "mywindow5" );
+        //cvDestroyWindow( "preBoxDetection" );
         return 0;
 }
