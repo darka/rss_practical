@@ -868,16 +868,18 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
         //ctrl.turn(result);
 }
 
-std::vector< std::vector<cv::KeyPoint> > sift_keypoints;
+std::vector< std::vector<cv::KeyPoint>* > sift_keypoints;
 std::vector< cv::Mat > sift_descriptors;
+cv::Mat sift_images;
 cv::SiftFeatureDetector detector;
 cv::SiftDescriptorExtractor extractor;
         
 void initSift()
 {
-        const size_t image_count = 9;
-        std::string image_names[image_count];
-        image_names[0] = "celebes.png";
+        const size_t image_count = 1;
+        std::vector<std::string> image_names;
+        image_names.push_back("walle.png");
+        /*image_names[0] = "celebes.png";
         image_names[1] = "fry.png";
         image_names[2] = "mario.png";
         image_names[3] = "terminator.png";
@@ -886,23 +888,31 @@ void initSift()
         image_names[6] = "starry.png";
         image_names[7] = "thor.png";
         image_names[8] = "walle.png";
-
+*/
 
         for (size_t i = 0; i < image_count; ++i)
         {
                 std::cout << "hey! :D\n";
-                cv::Mat input = cv::imread(image_names[image_count], 0); //Load as grayscale                
+                cv::Mat input = cv::imread(image_names[0], 0); //Load as grayscale                
                 std::cout << "hey! :D\n";
-                std::vector<cv::KeyPoint> keypoints_image;
-                detector.detect(input, keypoints_image);
+                std::vector<cv::KeyPoint>* keypoints_image = new std::vector<cv::KeyPoint>();
+                detector.detect(input, *keypoints_image);
                 
                 cv::Mat descriptors_image;
-                extractor.compute(input, keypoints_image, descriptors_image);
+                extractor.compute(input, *keypoints_image, descriptors_image);
                 
-
+                sift_images = input;
                 sift_keypoints.push_back(keypoints_image);
                 sift_descriptors.push_back(descriptors_image);
+                //std::cout <<  "walle: " << input << '\n';
+                imshow("mywindow6", input);
         } 
+        
+        std::cout << "KEYPOINTS:\n";    
+        for (size_t i = 0 ; i < sift_keypoints[0]->size(); i++)
+        {
+                std::cout << (*(sift_keypoints[0]))[i].pt << '\n';
+        }
 
 }
 
@@ -949,15 +959,25 @@ void detectFeatures(int min_x, int min_y, int max_x, int max_y)
         cv::Mat descriptors_camera;
         extractor.compute(croppedImageGray, keypoints_camera, descriptors_camera);
         
-        cv::Mat outputCam(croppedImage.size(), croppedImage.channels());
-        cv::drawKeypoints(croppedImage, keypoints_camera, outputCam);
+        cv::Mat outputCam;
+        cv::drawKeypoints(croppedImageGray, keypoints_camera, outputCam);
         imshow("mywindow5", outputCam);
+        
+        std::cout << "KEYPOINTS:\n";    
+        for (size_t i = 0 ; i < sift_keypoints[0]->size(); i++)
+        {
+                std::cout << (*(sift_keypoints[0]))[i].pt << '\n';
+        }
+        /*
+        cv::Mat walleOut;
+        cv::drawKeypoints(sift_images, sift_keypoints[0], walleOut);
+        imshow("mywindow6", walleOut);*/
         
         
         for (size_t image_iter = 0; image_iter != sift_keypoints.size(); ++image_iter)
         {
                 unsigned int count = 0;
-                for (size_t i = 0; i < sift_keypoints[image_iter].size(); ++i) {
+                for (size_t i = 0; i < sift_keypoints[image_iter]->size(); ++i) {
                         if(checkForMatch(i, keypoints_camera, sift_descriptors[image_iter], descriptors_camera))
                         {
                                 count++;
@@ -1085,6 +1105,7 @@ int main(int argc, char** argv) {
         cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow4", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow5", CV_WINDOW_AUTOSIZE );
+        cvNamedWindow( "mywindow6", CV_WINDOW_AUTOSIZE );
         //cvNamedWindow( "preBoxDetection", CV_WINDOW_AUTOSIZE );
         //cvNamedWindow( "preBoxDetectionsssssss", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
@@ -1159,6 +1180,7 @@ int main(int argc, char** argv) {
         cvDestroyWindow( "mywindow3" );
         cvDestroyWindow( "mywindow4" );
         cvDestroyWindow( "mywindow5" );
+        cvDestroyWindow( "mywindow6" );
         //cvDestroyWindow( "preBoxDetection" );
         return 0;
 }
