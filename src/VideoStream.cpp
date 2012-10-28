@@ -16,6 +16,14 @@ const int CAMERA_WIDTH = 180;
 const int CAMERA_HEIGHT = 135;
 const int CENTER_OFFSET = 0;
 
+bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera);
+double distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera);
+void detectFeatures(int min_x, int min_y, int max_x, int max_y);
+        
+        
+std::vector<cv::KeyPoint> matching;  
+CvCapture* capture;
+
 int calcHist(IplImage* img, int* colors)
 {
         /* Always check if the program can find a file */
@@ -323,6 +331,16 @@ double variance(vector<Point>& vec)
         std::cout << "var: " << retX << ", " << retY << '\n';
         return 0;
 } 
+
+void interpolatedCoordinates(int &min_x, int &min_y, int &max_x, int &max_y, int width, int height)
+{
+    
+    min_x = (float)min_x / width * 640;
+    max_x = (float)max_x / width * 640;
+    min_y = (float)min_y / height * 480;
+    max_y = (float)max_y / height * 480;    
+
+}
 void detectBoxes(IplImage* frame, int* boxVec)
 {
 
@@ -404,10 +422,10 @@ void detectBoxes(IplImage* frame, int* boxVec)
                 
                 cv::Point2f rBPts[4];
                 box.points(rBPts);
-                float min_x = rBPts[0].x;
-                float max_x = rBPts[0].x;
-                float min_y = rBPts[0].y;
-                float max_y = rBPts[0].y;
+                int min_x = rBPts[0].x;
+                int max_x = rBPts[0].x;
+                int min_y = rBPts[0].y;
+                int max_y = rBPts[0].y;
 
                 for(int i = 0; i < 3 ; i++){
 
@@ -427,9 +445,9 @@ void detectBoxes(IplImage* frame, int* boxVec)
                         
                 }
                 
-                float width = max_x - min_x;
-                float height = max_y - min_y;
-                float ratio = width / height;
+                int width = max_x - min_x;
+                int height = max_y - min_y;
+                float ratio = (float)width / height;
                 float boundingBoxArea = width * height;
 
 
@@ -463,15 +481,17 @@ void detectBoxes(IplImage* frame, int* boxVec)
                         drawContours(drawing, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
                         
                         // Transform it into the C++ cv::Mat format
-                        cv::Mat interestingImage(frame); 
+                        //cv::Mat interestingImage(frame); 
 
                         // Setup a rectangle to define your region of interest
-                        cv::Rect myROI(min_x, min_y, width, height);
+                        //cv::Rect myROI(min_x, min_y, width, height);
 
                         // Crop the full image to that image contained by the rectangle myROI
                         // Note that this doesn't copy the data
-                        cv::Mat croppedImage = interestingImage(myROI);
-                        imshow("mywindow5", croppedImage);
+                        //cv::Mat croppedImage = interestingImage(myROI);
+                        //imshow("mywindow5", croppedImage);
+                        interpolatedCoordinates(min_x, min_y, max_x, max_y, frame->width, frame->height);
+                        detectFeatures(min_x, min_y, max_x, max_y);
                 
                 }
         }
@@ -848,8 +868,190 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
         //ctrl.turn(result);
 }
 
+std::vector< std::vector<cv::KeyPoint> > sift_keypoints;
+std::vector< cv::Mat > sift_descriptors;
+cv::SiftFeatureDetector detector;
+cv::SiftDescriptorExtractor extractor;
+        
+void initSift()
+{
+        const size_t image_count = 9;
+        std::string image_names[image_count];
+        image_names[0] = "celebes.png";
+        image_names[1] = "fry.png";
+        image_names[2] = "mario.png";
+        image_names[3] = "terminator.png";
+        image_names[4] = "ferrari.png";
+        image_names[5] = "iron.png";
+        image_names[6] = "starry.png";
+        image_names[7] = "thor.png";
+        image_names[8] = "walle.png";
+
+
+        for (size_t i = 0; i < image_count; ++i)
+        {
+                std::cout << "hey! :D\n";
+                cv::Mat input = cv::imread(image_names[image_count], 0); //Load as grayscale                
+                std::cout << "hey! :D\n";
+                std::vector<cv::KeyPoint> keypoints_image;
+                detector.detect(input, keypoints_image);
+                
+                cv::Mat descriptors_image;
+                extractor.compute(input, keypoints_image, descriptors_image);
+                
+
+                sift_keypoints.push_back(keypoints_image);
+                sift_descriptors.push_back(descriptors_image);
+        } 
+
+}
+
+void detectFeatures(int min_x, int min_y, int max_x, int max_y)
+{
+ 
+        // Add results to image and save.
+        //cv::Mat output;
+
+
+        //cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
+        //cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
+        cvReleaseCapture(&capture);   
+        usleep(10);     
+        
+        capture = cvCaptureFromCAM( CV_CAP_ANY );
+        
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 640 );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 480 );
+
+        std::vector<cv::KeyPoint> keypoints_camera;   
+
+
+        IplImage* camera = cvQueryFrame( capture );
+        cv::Mat cameraMat(camera);
+        //cv::Mat cameraMatGray;
+        //cvtColor( cameraMat, cameraMatGray, CV_RGB2GRAY );
+
+        //cv::Mat interestingImage(frame); 
+
+        // Setup a rectangle to define your region of interest
+        int width = max_x - min_x;
+        int height = max_y - min_y;
+        
+        cv::Rect myROI(min_x, min_y, width, height);
+
+        // Crop the full image to that image contained by the rectangle myROI
+        // Note that this doesn't copy the data
+        cv::Mat croppedImage = cameraMat(myROI);
+
+        cv::Mat croppedImageGray;        
+        cvtColor(croppedImage, croppedImageGray, CV_RGB2GRAY);
+        detector.detect(croppedImageGray, keypoints_camera);
+        cv::Mat descriptors_camera;
+        extractor.compute(croppedImageGray, keypoints_camera, descriptors_camera);
+        
+        cv::Mat outputCam(croppedImage.size(), croppedImage.channels());
+        cv::drawKeypoints(croppedImage, keypoints_camera, outputCam);
+        imshow("mywindow5", outputCam);
+        
+        
+        for (size_t image_iter = 0; image_iter != sift_keypoints.size(); ++image_iter)
+        {
+                unsigned int count = 0;
+                for (size_t i = 0; i < sift_keypoints[image_iter].size(); ++i) {
+                        if(checkForMatch(i, keypoints_camera, sift_descriptors[image_iter], descriptors_camera))
+                        {
+                                count++;
+                        }
+                }
+                std::cout << "Count: " << count << '\n';   
+        }
+        
+
+        
+
+        //cv::Mat outputCam(croppedImage.size(), croppedImage.channels());
+        //cv::drawKeypoints(cameraMat, matching, outputCam);
+        //cv::imwrite("ck.png", outputCam);
+        //imshow("mywindow2", outputCam);
+        //imshow("mywindow", outputCam);
+        //cvShowImage( "mywindow2", camera );
+        
+        //cvReleaseImage(&camera);
+
+        // Do not release the frame!
+        //If ESC key pressed, Key=0x10001B under OpenCV 0.9.7(linux version),
+        //remove higher bits using AND operator
+        //if ( (cvWaitKey(10) & 255) == 27 ) break;
+        
+        keypoints_camera.clear();
+        //keypoints_camera.clear();
+        //sleep(1);
+        matching.clear();
+
+
+
+        //cv::drawKeypoints(input, keypoints_image, output);
+
+
+
+        cvReleaseCapture( &capture );
+        
+        usleep(10);     
+        
+        capture = cvCaptureFromCAM( CV_CAP_ANY );
+        
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT );
+}
+
+//cv::KeyPoint* checkForMatch(cv::KeyPoint& point, std::vector<cv::KeyPoint>& other_points )
+bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
+{
+    double dsq, distsq1 = 100000000, distsq2 = 100000000;
+
+    // Find the two closest matches, and put their squared distances in
+    // distsq1 and distsq2.
+    size_t minkey;
+    for (size_t i = 0; i < other_points.size(); ++i) {
+        dsq = distSquared(point_i, i, descriptors_image, descriptors_camera);
+
+        if (dsq < distsq1) {
+	        distsq2 = distsq1;
+        	distsq1 = dsq;
+	        minkey = i;
+        } 
+        else if (dsq < distsq2) {
+	        distsq2 = dsq;
+        }
+    }
+    // Check whether closest distance is less than 0.6 of second. 
+    if (10 * 10 * distsq1 <= 6 * 6 * distsq2)
+    {
+        matching.push_back(other_points[minkey]);
+        return true;
+    }    
+    else 
+        return false;
+}
+
+
+double distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
+{
+    int i = 0;
+    double distsq = 0.0;
+
+    for (i = 0; i < 128; i++) {
+      float dif = descriptors_image.at<float>(point_a, i) - descriptors_camera.at<float>(point_b, i);
+      distsq += dif * dif;
+    }
+    
+    return distsq;
+}
+
 int main(int argc, char** argv) {
 
+        initSift();
+        
         Controller ctrl;
         bool moveable[CAMERA_WIDTH];
         for (size_t i = 0; i < CAMERA_WIDTH; ++i)
@@ -861,7 +1063,7 @@ int main(int argc, char** argv) {
         
         int temp = 20;
 
-        CvCapture* capture = cvCaptureFromCAM( CV_CAP_ANY );
+        capture = cvCaptureFromCAM( CV_CAP_ANY );
         
 //hdCapture
         

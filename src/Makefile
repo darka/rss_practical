@@ -6,6 +6,9 @@ CameraCapture: CameraCapture.cpp
 	
 EdgeDetection: EdgeDetection.cpp
 	g++ EdgeDetection.cpp -o EdgeDetection -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc
+
+sift: sift.cpp
+	g++ sift.cpp -o sift -lphidget21 -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_features2d
 	
 Controller.o: Controller.cpp Controller.hpp
 	g++ -c Controller.cpp -o Controller.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21
