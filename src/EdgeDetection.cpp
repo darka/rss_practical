@@ -14,24 +14,48 @@ int main( int argc, char** argv )
 {
 
         //CvCapture* capture2 = cvCaptureFromCAM( CV_CAP_ANY );
-        CvCapture* capture = cvCaptureFromCAM( CV_CAP_ANY );
+        
 
         std::cout << "testa\n";        
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT );
+        //cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH );
+        //cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT );
         //cvSetCaptureProperty( capture2, CV_CAP_PROP_FRAME_WIDTH, 180 );
         //cvSetCaptureProperty( capture2, CV_CAP_PROP_FRAME_HEIGHT, 135 );
         //CvCapture* hdCapture = cvCaptureFromCAM( CV_CAP_ANY );
         //cvSetCaptureProperty( hdCapture, CV_CAP_PROP_FRAME_WIDTH, 352 );
         //cvSetCaptureProperty( hdCapture, CV_CAP_PROP_FRAME_HEIGHT, 288 );
         
-        if ( !capture ) {
+        /*if ( !capture ) {
                 fprintf( stderr, "ERROR: capture is NULL \n" );
                 getchar();
                 return -1;
-        }
+        }*/
         // Create a window in which the captured images will be presented
         cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
+        
+        while (1)
+        {
+               CvCapture* capture = cvCaptureFromCAM( CV_CAP_ANY ); 
+               cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH );
+               cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT );
+               IplImage* frame = cvQueryFrame(capture); 
+               cvReleaseImage(&frame);
+               cvReleaseCapture(&capture);
+               
+               
+               delete capture;
+               usleep(1000);
+               
+               capture = cvCaptureFromCAM( CV_CAP_ANY ); 
+               cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 180 );
+               cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 135 );
+               frame = cvQueryFrame(capture); 
+               cvReleaseImage(&frame);
+               cvReleaseCapture(&capture);
+               usleep(10);
+               if ( (cvWaitKey(10) & 255) == 27 ) break; 
+        }
+        /*
         cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
         std::cout << "test0\n";
         IplImage* frame = cvQueryFrame(capture);
@@ -81,8 +105,8 @@ int main( int argc, char** argv )
                 cvShowImage( "mywindow", frame );
                 std::cout <<"hello!!!\n";
                 if ( (cvWaitKey(10) & 255) == 27 ) break;
-        }
-        cvReleaseCapture(&capture);
+        }*/
+        //cvReleaseCapture(&capture);
         //c
   
   }

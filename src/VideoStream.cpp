@@ -334,11 +334,13 @@ double variance(vector<Point>& vec)
 
 void interpolatedCoordinates(int &min_x, int &min_y, int &max_x, int &max_y, int width, int height)
 {
-    
-    min_x = (float)min_x / width * 640;
-    max_x = (float)max_x / width * 640;
-    min_y = (float)min_y / height * 480;
-    max_y = (float)max_y / height * 480;    
+    //std::cout << "INTERPOLATED:\n";
+    //std::cout << (((float)min_x) / ((float)width)) << ", " << max_x << ", " << min_y << ", " << max_y << ", " << width << ", " << height << '\n';    
+    min_x = ((float)min_x) / width * 640;
+    max_x = ((float)max_x) / width * 640;
+    min_y = ((float)min_y) / height * 480;
+    max_y = ((float)max_y) / height * 480;
+    //std::cout << min_x_ << ", " << max_x_ << ", " << min_y_ << ", " << max_y_ << '\n';
 
 }
 void detectBoxes(IplImage* frame, int* boxVec)
@@ -368,6 +370,7 @@ void detectBoxes(IplImage* frame, int* boxVec)
         
         
         cv::Mat gray0(gray2, false);
+        
         int scale = 1;
         int delta = 0;
         int ddepth = CV_16S; 
@@ -490,7 +493,9 @@ void detectBoxes(IplImage* frame, int* boxVec)
                         // Note that this doesn't copy the data
                         //cv::Mat croppedImage = interestingImage(myROI);
                         //imshow("mywindow5", croppedImage);
-                        interpolatedCoordinates(min_x, min_y, max_x, max_y, frame->width, frame->height);
+                        std::cout<<min_x << "," << max_x << "," << min_y << "," << max_y << "," << width << "," << height << std::endl;
+                        interpolatedCoordinates(min_x, min_y, max_x, max_y, drawing.cols, drawing.rows);
+                        std::cout<<min_x << "," << max_x << "," << min_y << "," << max_y << "," << width << "," << height << std::endl;
                         detectFeatures(min_x, min_y, max_x, max_y);
                 
                 }
@@ -538,6 +543,7 @@ void detectBoxes(IplImage* frame, int* boxVec)
                 std::cout << boxVec[i];    
         }
         std::cout << '\n';
+        cvReleaseImage(&gray2);
 }
 
 std::pair<size_t, size_t> longestLine(int* boxVec, size_t size)
@@ -928,6 +934,7 @@ void detectFeatures(int min_x, int min_y, int max_x, int max_y)
         cvReleaseCapture(&capture);   
         usleep(10);     
         
+        
         capture = cvCaptureFromCAM( CV_CAP_ANY );
         
         cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 640 );
@@ -936,7 +943,12 @@ void detectFeatures(int min_x, int min_y, int max_x, int max_y)
         std::vector<cv::KeyPoint> keypoints_camera;   
 
 
-        IplImage* camera = cvQueryFrame( capture );
+        IplImage* camera = NULL; 
+        
+        while ( camera == NULL ) {
+                camera = cvQueryFrame( capture );
+        }
+        
         cv::Mat cameraMat(camera);
         //cv::Mat cameraMatGray;
         //cvtColor( cameraMat, cameraMatGray, CV_RGB2GRAY );
@@ -947,7 +959,40 @@ void detectFeatures(int min_x, int min_y, int max_x, int max_y)
         int width = max_x - min_x;
         int height = max_y - min_y;
         
+        if(min_x >= 640)
+        {
+            min_x = 640;   
+        }
+
+        if(max_x >= 640)
+        {
+            max_x = 640;   
+        }
+        
+        if(min_y >= 480)
+        {
+            min_y = 480;   
+        }
+        
+        if(max_y >= 480)
+        {
+            max_y = 480;   
+        }
+        
+        if(min_y + height >= 480)
+        {
+            height = 480 - min_y;   
+        }
+        
+        if(min_x + width >= 640)
+        {
+            width = 640 - min_x;   
+        }
+        
+        
+        std::cout<<min_x << "," << max_x << "," << min_y << "," << max_y << "," << width << "," << height << std::endl;
         cv::Rect myROI(min_x, min_y, width, height);
+
 
         // Crop the full image to that image contained by the rectangle myROI
         // Note that this doesn't copy the data
@@ -1045,7 +1090,7 @@ bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::
         }
     }
     // Check whether closest distance is less than 0.6 of second. 
-    if (10 * 10 * distsq1 <= 6 * 6 * distsq2)
+    if (10 * 10 * distsq1 <= 7 * 7 * distsq2)
     {
         matching.push_back(other_points[minkey]);
         return true;
@@ -1094,6 +1139,8 @@ int main(int argc, char** argv) {
         //cvSetCaptureProperty( hdCapture, CV_CAP_PROP_FRAME_WIDTH, 352 );
         //cvSetCaptureProperty( hdCapture, CV_CAP_PROP_FRAME_HEIGHT, 288 );
         
+        usleep(10);
+        
         if ( !capture ) {
                 fprintf( stderr, "ERROR: capture is NULL \n" );
                 getchar();
@@ -1120,8 +1167,13 @@ int main(int argc, char** argv) {
         while ( 1 ) {
                 // Get one frame
                 //cvQueryFrame( capture );
-                IplImage* orig = cvQueryFrame( capture );
-
+                IplImage* orig = NULL;
+                while ( orig == NULL ) {
+                       orig = cvQueryFrame( capture );
+                }
+                //IplImage* orig = cvCreateImage(cvSize(orig->width,orig->height),orig->depth, orig->nChannels); 
+                //cvCopy( realOrig, orig, NULL );
+                
                 IplImage* frame = cvCreateImage(cvSize(orig->width,orig->height),IPL_DEPTH_8U, orig->nChannels);                 
                 IplImage* dst = cvCreateImage(cvSize(frame->width,frame->height),IPL_DEPTH_8U, frame->nChannels); 
                 
@@ -1166,7 +1218,9 @@ int main(int argc, char** argv) {
                 //std::cout << "ANGLE: " << angle << '\n';
                 //ctrl.turn(angle);
                 //std::cout << "max r: " << colors[0] << " g: " << colors[1] << " b: " << colors[2] << '\n';
+                cvReleaseImage(&frame);
                 cvReleaseImage(&dst);
+                //cvReleaseImage(&orig);
 
                 // Do not release the frame!
                 //If ESC key pressed, Key=0x10001B under OpenCV 0.9.7(linux version),
