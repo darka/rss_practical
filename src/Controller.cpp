@@ -218,6 +218,15 @@ void Controller::turnRight()
 	CPhidgetMotorControl_setVelocity (motoControl, 1, 0);
 }
 
+void Controller::rotateOnSpot()
+{
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, -speed);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, -accel);
+
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, -speed);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, -accel);
+}
+
 void Controller::stop()
 {
         CPhidgetMotorControl_setAcceleration (motoControl, 0, 0);

@@ -17,6 +17,7 @@ public:
   void turnRight();
   void turn(double angle);
   void stop();
+  void rotateOnSpot();
   
   int getIRLeftValue();
   int getIRRightValue();
