@@ -12,10 +12,10 @@
 //#include "controller.hpp"
 
 using namespace cv;
-const int CAMERA_WIDTH = 256;
-const int CAMERA_HEIGHT = 192;
-//const int CAMERA_WIDTH = 180;
-//const int CAMERA_HEIGHT = 135;
+//const int CAMERA_WIDTH = 256;
+//const int CAMERA_HEIGHT = 192;
+const int CAMERA_WIDTH = 180;
+const int CAMERA_HEIGHT = 135;
 //const int CAMERA_WIDTH = 320;
 //const int CAMERA_HEIGHT = 240;
 const int CENTER_OFFSET = 0;
@@ -630,7 +630,7 @@ void stopAndRotate(Controller& ctrl)
         ctrl.stop(); 
         usleep(1000);
         ctrl.rotateOnSpot();
-        usleep(4000);
+        usleep(10000);
 }
 
 struct BoxHistory
@@ -674,7 +674,7 @@ struct BoxHistory
 
 void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& boxHistory, IplImage* normalCapture, IplImage* hdCapture, int* boxVec)
 {
-        const int freeSpaceThreshold = 50;
+        const int freeSpaceThreshold = 100;
         const int leftThreshold = 25;
         const int middleThreshold = 40;
         const int rightThreshold = 35;
@@ -779,7 +779,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
         }
         cvLine(img, cvPoint((int)beginMax, 100), cvPoint((int)endMax, 100), CV_RGB(0,0,255));
         //std::cout << "begin: " << beginMax << " end: " << endMax << '\n';
-        //cvShowImage( "mywindow2", img );
+        cvShowImage( "mywindow7", img );
         
         int lowestY = img->height;
         for (size_t i = beginMax; i <= endMax; ++i)
@@ -794,31 +794,36 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
        
         //std::cout << "lowestY: " << lowestY << ", bottom_dist: " << bottom_dist << ", img->width: " << img->width << '\n';
         double result = 0;
+        std::cout << ">>>>>>> " << lowestY << ", " << bottom_dist << ", " << goal_dist << '\n';
+        /*
         if (moveTowardsBox)
         {
                 boxHistory.update(true);
                 int line_mid = (boxLine.first + boxLine.second) / 2;
-                int bottom_box_dist = line_mid - (img->width / 2) + CENTER_OFFSET;
+                int bottom_box_dist = line_mid - (img->width / 2);
                 double tanbox = (double)minBoxDistance / (double)bottom_box_dist;
         
                 result = std::atan(tanbox);
                 //std::cout << "BOX LOCATED!!! The arc tangent is: " <<  (result * 180 / PI) << '\n';
                 result = result * 180 / PI;
         }
-        else if (bottom_dist > 0) 
+        else*/
+        if (bottom_dist != 0) 
         {
-                if (boxHistory.movingTowardsBox())
+                /*if (boxHistory.movingTowardsBox())
                 {
                         result = 0;
                 }
-                else
+                else*/
                 {
                         boxHistory.update(false);
                         double tan = (double)lowestY / (double)bottom_dist;
-                
+                        
                         result = std::atan(tan);
                         //std::cout << "The arc tangent is: " <<  (result * 180 / PI) << '\n';
                         result = result * 180 / PI;
+                        if (result > 0) result = 90 - result;
+                        if (result < 0) result = -90 - result;
                 }        
         }
         
@@ -847,29 +852,29 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
         }
         if (leftWhisker > WhiskerThreshold)
         {
-                if (boxHistory.movingTowardsBox())
+                /*if (boxHistory.movingTowardsBox())
                 {
                         stopAndRotate(ctrl);
                 }
-                else
-                {
+                else*/
+                //{
                         std::cout << "Moving back: left whisker\n";
                         moveBack = true;
-                }
+                //}
                         
                 
         }
         if (rightWhisker > WhiskerThreshold)
         {
-                if (boxHistory.movingTowardsBox())
+                /*if (boxHistory.movingTowardsBox())
                 {
                         stopAndRotate(ctrl);
                 }
-                else
-                {
+                else*/
+                //{
                         moveBack = true;
                         std::cout << "Moving back: right whisker\n";
-                }        
+                //}        
         }
         
         if (detectedCorrectBox)
@@ -886,13 +891,18 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
                 
         }/* else {ctrl.stop();}*/
         
-        if(distanceMax < 60){
-           result = 90;
+        if(distanceMax < 20){
+                if (result < 0)
+                         result = -90;
+                else        
+                         result = 90;
         }
         std::cout << ">>> Angle: " << result << '\n';
         
         if (stoppedForPicturesCounter == 0)
+        {
                 ctrl.turn(result);
+        }        
 }
 
 std::vector< std::vector<cv::KeyPoint>* > sift_keypoints;
@@ -905,13 +915,13 @@ std::vector<std::string> image_names;
 void initSift()
 {
 
-        image_names.push_back("walle.png");
-        /*image_names.push_back("ferrari.png");
+        /*image_names.push_back("walle.png");
+        image_names.push_back("ferrari.png");
         image_names.push_back("celebes.png");
         image_names.push_back("fry.png");
-        image_names.push_back("mario.png");
+        image_names.push_back("mario.png");*/
         image_names.push_back("terminator.png");
-        image_names.push_back("iron.png");
+        /*image_names.push_back("iron.png");
         image_names.push_back("starry.png");
         image_names.push_back("thor.png");*/
 
@@ -942,6 +952,7 @@ void initSift()
 
 }
 
+unsigned int matchedImageCounter = 0;
 bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameHD)
 {
         bool ret = false;
@@ -1024,40 +1035,38 @@ bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameH
         cv::Mat descriptors_camera;
         extractor.compute(croppedImageGray, keypoints_camera, descriptors_camera);
         
-        cv::Mat outputCam;
-        cv::drawKeypoints(croppedImageGray, keypoints_camera, outputCam);
-        imshow("mywindow5", outputCam);
-        
-        //std::cout << "KEYPOINTS:\n";    
-        for (size_t i = 0 ; i < sift_keypoints[0]->size(); i++)
-        {
-                //std::cout << (*(sift_keypoints[0]))[i].pt << '\n';
-        }
-        /*
-        cv::Mat walleOut;
-        cv::drawKeypoints(sift_images, sift_keypoints[0], walleOut);
-        imshow("mywindow6", walleOut);*/
-        
-        
-        for (size_t image_iter = 0; image_iter != sift_keypoints.size(); ++image_iter)
-        {
-                unsigned int count = 0;
-                for (size_t i = 0; i < sift_keypoints[image_iter]->size(); ++i) {
-                        if(checkForMatch(i, keypoints_camera, sift_descriptors[image_iter], descriptors_camera))
-                        {
-                                count++;
-                        }
-                }
-                std::cout << image_names[image_iter] << "   keypoints: " << count << '\n';  
-                
-                if (count >= 11) 
-                {
-                        ret = true;
-                        break;
-                }
-        }
         
 
+        if (keypoints_camera.size() > 10)
+        {
+                for (size_t image_iter = 0; image_iter != sift_keypoints.size(); ++image_iter)
+                {
+                        unsigned int count = 0;
+                        for (size_t i = 0; i < sift_keypoints[image_iter]->size(); ++i) {
+
+                                if(checkForMatch(i, keypoints_camera, sift_descriptors[image_iter], descriptors_camera))
+                                {
+                                        count++;
+                                }
+                        }
+                        std::cout << image_names[image_iter] << "   keypoints: " << count << '\n';  
+                        
+                        if (count >= 15) 
+                        {
+                                ret = true;
+                                cv::Mat outputCam;
+                                cv::drawKeypoints(croppedImageGray, keypoints_camera, outputCam);
+                                imshow("mywindow5", outputCam);
+                                std::stringstream ss;
+                                ss << "matched";
+                                ss << matchedImageCounter;
+                                ss << ".png";
+                                cv::imwrite(ss.str().c_str(), outputCam);
+                                matchedImageCounter++;
+                                break;
+                        }
+                }
+        }
         
 
         //cv::Mat outputCam(croppedImage.size(), croppedImage.channels());
@@ -1082,18 +1091,6 @@ bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameH
 
 
         //cv::drawKeypoints(input, keypoints_image, output);
-
-
-/*
-        cvReleaseCapture( &capture );
-        
-        usleep(10);     
-        
-        capture = cvCaptureFromCAM( CV_CAP_ANY );
-        
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT );
-*/
 }
 
 //cv::KeyPoint* checkForMatch(cv::KeyPoint& point, std::vector<cv::KeyPoint>& other_points )

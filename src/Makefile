@@ -10,15 +10,22 @@ EdgeDetection: EdgeDetection.cpp
 sift: sift.cpp
 	g++ sift.cpp -o sift -lphidget21 -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_features2d
 	
+
 Controller.o: Controller.cpp Controller.hpp
 	g++ -c Controller.cpp -o Controller.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21
 	
 VideoStream.o: VideoStream.cpp Controller.o
 	g++ -c VideoStream.cpp -o VideoStream.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21  -lopencv_calib3d -lopencv_features2d
 
+TestControl.o: TestControl.cpp Controller.o
+	g++ -c TestControl.cpp -o TestControl.o -lphidget21 -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_features2d
+	
 VideoStream: VideoStream.o Controller.o
 	g++ -o VideoStream VideoStream.o Controller.o  -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d
-		
+
+TestControl: TestControl.o Controller.o
+	g++ -o TestControl TestControl.o Controller.o  -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d
+			
 Main.o: Main.cpp Controller.o
 	g++ -c Main.cpp -o Main.o Controller.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21
 

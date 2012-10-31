@@ -47,8 +47,12 @@ int CurrentChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index,
 
 Controller::Controller()
 : motoControl(0)
-, speed(-60)
-, accel(-60)
+, speed(60)
+, speedLeftFactor(1.0)
+, speedRightFactor(1.2)
+, accelLeftFactor(1.0)
+, accelRightFactor(1.2)
+, accel(60)
 , backwardTurnFastFactor(1.2)
 , backwardTurnSlowFactor(0.1)
 {
@@ -121,30 +125,30 @@ int Controller::getWhiskerRightValue()
 
 int Controller::getIRLeftValue()
 {
-        return getSensorValue(1);
+        return getSensorValue(0);
 }
 
 int Controller::getIRRightValue()
 {
-        return getSensorValue(0);
+        return getSensorValue(1);
 }
 
 void Controller::moveForward()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, -accel);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, -speed);
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, -accel * accelLeftFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, -speed * speedLeftFactor);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, accel);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, speed);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, accel * accelRightFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, speed * speedRightFactor);
 }
 
 void Controller::moveBackward()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, accel);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, speed);
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, accel * accelLeftFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, speed * speedLeftFactor);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, -accel * accelRightFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, -speed * speedRightFactor);
 }
 
 void Controller::moveBackwardLeft()
@@ -205,14 +209,14 @@ void Controller::turnLeft()
         CPhidgetMotorControl_setAcceleration (motoControl, 0, 0);
 	CPhidgetMotorControl_setVelocity (motoControl, 0, 0);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, speed);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, accel);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, accel * accelRightFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, speed * speedRightFactor);
 }
 
 void Controller::turnRight()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, -speed);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, -accel);
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, -accel * accelLeftFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, -speed * speedLeftFactor);
 
 	CPhidgetMotorControl_setAcceleration (motoControl, 1, 0);
 	CPhidgetMotorControl_setVelocity (motoControl, 1, 0);
@@ -220,11 +224,12 @@ void Controller::turnRight()
 
 void Controller::rotateOnSpot()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, -speed);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, -accel);
+        int rotationSpeed = 100;
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, -rotationSpeed);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, -rotationSpeed);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, -speed);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, -accel);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, -rotationSpeed);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, -rotationSpeed);
 }
 
 void Controller::stop()

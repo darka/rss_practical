@@ -25,7 +25,11 @@ public:
   int getWhiskerRightValue();
   
   double speed;
+  double speedLeftFactor;
+  double speedRightFactor;
   double accel;
+  double accelLeftFactor;
+  double accelRightFactor;
   double backwardTurnSlowFactor;
   double backwardTurnFastFactor;
   CPhidgetMotorControlHandle motoControl;
