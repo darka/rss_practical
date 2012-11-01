@@ -16,6 +16,8 @@ using namespace cv;
 //const int CAMERA_HEIGHT = 192;
 const int CAMERA_WIDTH = 180;
 const int CAMERA_HEIGHT = 135;
+const int REAL_WIDTH = 576;
+const int REAL_HEIGHT = 432;
 //const int CAMERA_WIDTH = 320;
 //const int CAMERA_HEIGHT = 240;
 const int CENTER_OFFSET = 0;
@@ -282,7 +284,7 @@ bool isGround(IplImage* src, IplImage* dst, int* colors, int* odv)
 }
 
 
-bool moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
+void moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
 {
         int leftSpace = 0;
         for (size_t i = 0; i < img->width / 2; ++i)
@@ -297,7 +299,7 @@ bool moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
         double leftSpaceAverage = leftSpace / (img->width / 2.0);
         double rightSpaceAverage = rightSpace / (img->width / 2.0);
         ctrl.moveBackward();
-        usleep(500);
+        usleep(400000);
         if (leftSpaceAverage < rightSpaceAverage)
         {
                 ctrl.moveBackwardRight();
@@ -306,8 +308,8 @@ bool moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
         {
                 ctrl.moveBackwardLeft();
         }
+        usleep(300000);
 }
-
 double variance(vector<Point>& vec)
 {
         double meanX = 0;
@@ -341,10 +343,10 @@ void interpolatedCoordinates(int &min_x, int &min_y, int &max_x, int &max_y, int
 {
     //std::cout << "INTERPOLATED:\n";
     //std::cout << (((float)min_x) / ((float)width)) << ", " << max_x << ", " << min_y << ", " << max_y << ", " << width << ", " << height << '\n';    
-    min_x = ((float)min_x) / width * 640;
-    max_x = ((float)max_x) / width * 640;
-    min_y = ((float)min_y) / height * 480;
-    max_y = ((float)max_y) / height * 480;
+    min_x = ((float)min_x) / width * REAL_WIDTH;
+    max_x = ((float)max_x) / width * REAL_WIDTH;
+    min_y = ((float)min_y) / height * REAL_HEIGHT;
+    max_y = ((float)max_y) / height * REAL_HEIGHT;
     //std::cout << min_x_ << ", " << max_x_ << ", " << min_y_ << ", " << max_y_ << '\n';
 
 }
@@ -353,6 +355,8 @@ void interpolatedCoordinates(int &min_x, int &min_y, int &max_x, int &max_y, int
 int b = 100;
 int c = 1;
 int d = 3;*/
+
+int whiskerIgnoreCounter = 0;
 bool detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
 {
         bool ret = false;
@@ -628,9 +632,9 @@ void stopAndRotate(Controller& ctrl)
 {
         std::cout << "stopping and rotating...\n";
         ctrl.stop(); 
-        usleep(1000);
+        usleep(1000000);
         ctrl.rotateOnSpot();
-        usleep(10000);
+        usleep(1000000);
 }
 
 struct BoxHistory
@@ -674,20 +678,14 @@ struct BoxHistory
 
 void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& boxHistory, IplImage* normalCapture, IplImage* hdCapture, int* boxVec)
 {
-        const int freeSpaceThreshold = 100;
+        const int freeSpaceThreshold = 70;
         const int leftThreshold = 25;
         const int middleThreshold = 40;
         const int rightThreshold = 35;
         
-        const int IRThreshold = 300;
+        const int IRThreshold = 250;
         const int WhiskerThreshold = 500;
         
-        
-        
-
-        
-        
-
         for (size_t i = 0; i < img->width; ++i)
         {
                 if (odv[i] <= freeSpaceThreshold)
@@ -704,7 +702,8 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
         //std::cout << '\n';
 
         // BOX DETECTION!!
-        bool detectedCorrectBox = detectBoxes(normalCapture, hdCapture, boxVec);        
+        bool detectedCorrectBox = false;
+        //bool detectedCorrectBox = detectBoxes(normalCapture, hdCapture, boxVec);        
         std::pair<size_t, size_t> boxLine = longestLine(boxVec, img->width);
         bool moveTowardsBox;
         int minBoxDistance = img->height;
@@ -850,33 +849,24 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
                 moveBack = true;
                 std::cout << "Moving back: right IR\n";
         }
-        if (leftWhisker > WhiskerThreshold)
+        std::cout << "whiskers touched? " << Controller::whiskersTouched << '\n';
+        
+        if (Controller::whiskersTouched)
         {
-                /*if (boxHistory.movingTowardsBox())
+                std::cout << "Moving back: whiskers touched\n";
+                Controller::whiskersTouched = false;
+                if (whiskerIgnoreCounter == 0)
                 {
-                        stopAndRotate(ctrl);
-                }
-                else*/
-                //{
-                        std::cout << "Moving back: left whisker\n";
                         moveBack = true;
-                //}
-                        
+                        whiskerIgnoreCounter = 5;
+                }        
+                else        
+                {
+                        whiskerIgnoreCounter--;
+                }
                 
         }
-        if (rightWhisker > WhiskerThreshold)
-        {
-                /*if (boxHistory.movingTowardsBox())
-                {
-                        stopAndRotate(ctrl);
-                }
-                else*/
-                //{
-                        moveBack = true;
-                        std::cout << "Moving back: right whisker\n";
-                //}        
-        }
-        
+
         if (detectedCorrectBox)
         {
                 stopAndRotate(ctrl);
@@ -899,6 +889,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
         }
         std::cout << ">>> Angle: " << result << '\n';
         
+        std::cout << "pictures counter: " << stoppedForPicturesCounter << '\n';
         if (stoppedForPicturesCounter == 0)
         {
                 ctrl.turn(result);
@@ -990,34 +981,34 @@ bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameH
         int width = max_x - min_x;
         int height = max_y - min_y;
         
-        if(min_x >= 640)
+        if(min_x >= REAL_WIDTH)
         {
-            min_x = 640;   
+            min_x = REAL_WIDTH;   
         }
 
-        if(max_x >= 640)
+        if(max_x >= REAL_WIDTH)
         {
-            max_x = 640;   
+            max_x = REAL_WIDTH;   
         }
         
-        if(min_y >= 480)
+        if(min_y >= REAL_HEIGHT)
         {
-            min_y = 480;   
+            min_y = REAL_HEIGHT;   
         }
         
-        if(max_y >= 480)
+        if(max_y >= REAL_HEIGHT)
         {
-            max_y = 480;   
+            max_y = REAL_HEIGHT;   
         }
         
-        if(min_y + height >= 480)
+        if(min_y + height >= REAL_HEIGHT)
         {
-            height = 480 - min_y;   
+            height = REAL_HEIGHT - min_y;   
         }
         
-        if(min_x + width >= 640)
+        if(min_x + width >= REAL_WIDTH)
         {
-            width = 640 - min_x;   
+            width = REAL_WIDTH - min_x;   
         }
         
         
@@ -1155,8 +1146,8 @@ int main(int argc, char** argv) {
         
 //hdCapture
         
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 640 );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 480 );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, REAL_WIDTH );
+        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, REAL_HEIGHT );
 
         //CvCapture* hdCapture = cvCaptureFromCAM( CV_CAP_ANY );
         //cvSetCaptureProperty( hdCapture, CV_CAP_PROP_FRAME_WIDTH, 352 );

@@ -45,6 +45,15 @@ int CurrentChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index,
 	return 0;
 }
 
+int InputChangeHandler(CPhidgetInterfaceKitHandle IFK, void *usrptr, int Index, int State)
+{
+        std::cout << "Whiskers touched.\n";
+	Controller::whiskersTouched = true;
+	return 0;
+}
+
+bool Controller::whiskersTouched = false;
+
 Controller::Controller()
 : motoControl(0)
 , speed(60)
@@ -53,8 +62,8 @@ Controller::Controller()
 , accelLeftFactor(1.0)
 , accelRightFactor(1.2)
 , accel(60)
-, backwardTurnFastFactor(1.2)
-, backwardTurnSlowFactor(0.1)
+, backwardTurnFastFactor(1.5)
+, backwardTurnSlowFactor(-1.5)
 {
 	//create the motor control object
 	CPhidgetMotorControl_create(&motoControl);
@@ -75,7 +84,9 @@ Controller::Controller()
 	CPhidget_set_OnAttach_Handler((CPhidgetHandle)ifKit, AttachHandler, NULL);
 	CPhidget_set_OnDetach_Handler((CPhidgetHandle)ifKit, DetachHandler, NULL);
 	CPhidget_set_OnError_Handler((CPhidgetHandle)ifKit, ErrorHandler, NULL);
-
+	
+        CPhidgetInterfaceKit_set_OnInputChange_Handler (ifKit, InputChangeHandler, NULL);
+        
 	//open the interfacekit for device connections
 	CPhidget_open((CPhidgetHandle)ifKit, -1);
 	

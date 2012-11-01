@@ -35,9 +35,12 @@ public:
   CPhidgetMotorControlHandle motoControl;
   CPhidgetInterfaceKitHandle ifKit;
   
+  static bool whiskersTouched;
+  
 private:
   int getSensorValue(int sensorId);
 };
+
 
 
 int AttachHandler(CPhidgetHandle MC, void *userptr);
@@ -46,6 +49,6 @@ int ErrorHandler(CPhidgetHandle MC, void *userptr, int ErrorCode, const char *De
 int InputChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index, int State);
 int VelocityChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index, double Value);
 int CurrentChangeHandler(CPhidgetMotorControlHandle MC, void *usrptr, int Index, double Value);
-
+int InputChangeHandler(CPhidgetInterfaceKitHandle IFK, void *usrptr, int Index, int State);
 
 #endif // CONTROLLER_HPP
