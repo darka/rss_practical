@@ -16,8 +16,10 @@ using namespace cv;
 //const int CAMERA_HEIGHT = 192;
 const int CAMERA_WIDTH = 180;
 const int CAMERA_HEIGHT = 135;
-const int REAL_WIDTH = 576;
-const int REAL_HEIGHT = 432;
+const int REAL_WIDTH = 544;
+const int REAL_HEIGHT = 288;
+//const int REAL_WIDTH = 640;
+//const int REAL_HEIGHT = 480;
 //const int CAMERA_WIDTH = 320;
 //const int CAMERA_HEIGHT = 240;
 const int CENTER_OFFSET = 0;
@@ -494,7 +496,7 @@ bool detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                 
 //                if (tooCloseToEdge) continue;
                 
-                if(2000 > area && area > 150 && 1.6f > ratio && ratio > 0.4f && boundingBoxArea < 2*area)
+                if(2000 > area && area > 300 && 1.6f > ratio && ratio > 0.4f && boundingBoxArea < 2*area)
                 {
                         drawContours(drawing, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
                         
@@ -510,12 +512,21 @@ bool detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                         //imshow("mywindow5", croppedImage);
                         if (stoppedForPicturesCounter == 0)
                                 stoppedForPicturesCounter = 5;
-                        std::cout<<min_x << "," << max_x << "," << min_y << "," << max_y << "," << width << "," << height << std::endl;
+        
+                        std::cout<<min_x << "," << max_x << "," << min_y << "," << max_y << "," << drawing.cols << "," << drawing.rows << std::endl;
+                        int min_x_ = min_x;
+                        int min_y_ = min_y;
+                        int max_x_ = max_x;
+                        int max_y_ = max_y;
                         interpolatedCoordinates(min_x, min_y, max_x, max_y, drawing.cols, drawing.rows);
-                        std::cout<<min_x << "," << max_x << "," << min_y << "," << max_y << "," << width << "," << height << std::endl;
+                        std::cout<< min_x << "," << max_x << "," << min_y << "," << max_y << "," << drawing.cols << "," << drawing.rows << std::endl;
                         std::cout << "HD: " << frameHD->width << ", " << frameHD->height << '\n';
                         ctrl.stop();
                         ret = detectFeatures(min_x, min_y, max_x, max_y, frameHD);
+                        /*if (ret)
+                        {
+                                rectangle(drawing, Point(min_x_, min_y_), Point(max_x_, max_y_), Scalar(0, 255, 0));
+                        }*/
                 
                 }
         }
@@ -703,7 +714,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
 
         // BOX DETECTION!!
         bool detectedCorrectBox = false;
-        //bool detectedCorrectBox = detectBoxes(normalCapture, hdCapture, boxVec);        
+        detectedCorrectBox = detectBoxes(normalCapture, hdCapture, boxVec);        
         std::pair<size_t, size_t> boxLine = longestLine(boxVec, img->width);
         bool moveTowardsBox;
         int minBoxDistance = img->height;
@@ -869,7 +880,8 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
 
         if (detectedCorrectBox)
         {
-                stopAndRotate(ctrl);
+                
+                //stopAndRotate(ctrl);
                 return;
         }
         
@@ -890,7 +902,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, BoxHistory& 
         std::cout << ">>> Angle: " << result << '\n';
         
         std::cout << "pictures counter: " << stoppedForPicturesCounter << '\n';
-        if (stoppedForPicturesCounter == 0)
+        if (stoppedForPicturesCounter <= 1)
         {
                 ctrl.turn(result);
         }        
@@ -906,19 +918,20 @@ std::vector<std::string> image_names;
 void initSift()
 {
 
-        /*image_names.push_back("walle.png");
+        image_names.push_back("walle.png");
         image_names.push_back("ferrari.png");
         image_names.push_back("celebes.png");
         image_names.push_back("fry.png");
-        image_names.push_back("mario.png");*/
+        image_names.push_back("mario.png");
         image_names.push_back("terminator.png");
-        /*image_names.push_back("iron.png");
+        image_names.push_back("iron.png");
         image_names.push_back("starry.png");
-        image_names.push_back("thor.png");*/
+        image_names.push_back("thor.png");
 
 
         for (size_t i = 0; i < image_names.size(); ++i)
         {
+                std::cout << "Generating descriptors for: " << image_names[i] << '\n';
                 //std::cout << "hey! :D\n";
                 cv::Mat input = cv::imread(image_names[i], 0); //Load as grayscale                
                 //std::cout << "hey! :D\n";
@@ -1168,6 +1181,7 @@ int main(int argc, char** argv) {
         cvNamedWindow( "mywindow5", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow6", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow7", CV_WINDOW_AUTOSIZE );
+
         //cvNamedWindow( "preBoxDetection", CV_WINDOW_AUTOSIZE );
         //cvNamedWindow( "preBoxDetectionsssssss", CV_WINDOW_AUTOSIZE );
         // Show the image captured from the camera in the window and repeat
@@ -1263,6 +1277,7 @@ int main(int argc, char** argv) {
         cvDestroyWindow( "mywindow5" );
         cvDestroyWindow( "mywindow6" );
         cvDestroyWindow( "mywindow7" );
+
         //cvDestroyWindow( "preBoxDetection" );
         return 0;
 }
