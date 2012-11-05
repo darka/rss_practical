@@ -14,9 +14,13 @@
 int main(int argc, char** argv) {
         Controller ctrl;
         usleep(2000000);
-        ctrl.moveBackward();
+        ctrl.openServo();
+        //ctrl.rotateOnSpotLeft();
         
-        usleep(2500000);
+        usleep(1200000);
+        ctrl.closeServo();
+        usleep(1200000);
+        //ctrl.rotateOnSpotLeft();
         
         //ctrl.moveBackwardLeft();
         

@@ -18,6 +18,10 @@ public:
   void turn(double angle);
   void stop();
   void rotateOnSpot();
+  void rotateOnSpotLeft();
+  void rotateOnSpotRight();
+  void openServo();
+  void closeServo();
   
   int getIRLeftValue();
   int getIRRightValue();
@@ -32,12 +36,17 @@ public:
   double accelRightFactor;
   double backwardTurnSlowFactor;
   double backwardTurnFastFactor;
+  double servoOpen;
+  double servoClosed;
+  
+  int rotationOnSpotSpeed;
   CPhidgetMotorControlHandle motoControl;
   CPhidgetInterfaceKitHandle ifKit;
   
   static bool whiskersTouched;
   
 private:
+  CPhidgetAdvancedServoHandle servo;
   int getSensorValue(int sensorId);
 };
 

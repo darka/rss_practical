@@ -56,14 +56,27 @@ bool Controller::whiskersTouched = false;
 
 Controller::Controller()
 : motoControl(0)
-, speed(60)
+, speed(45)
 , speedLeftFactor(1.0)
 , speedRightFactor(1.2)
 , accelLeftFactor(1.0)
 , accelRightFactor(1.2)
-, accel(60)
+, rotationOnSpotSpeed(30)
+, accel(45)
 , backwardTurnFastFactor(1.5)
 , backwardTurnSlowFactor(-1.5)
+, servo(0)
+, servoOpen(40.00)
+, servoClosed(120.00)
+/*, speed(100)
+, speedLeftFactor(1.0)
+, speedRightFactor(1.0)
+, accelLeftFactor(1.0)
+, accelRightFactor(1.0)
+, rotationOnSpotSpeed(40)
+, accel(100)
+, backwardTurnFastFactor(1)
+, backwardTurnSlowFactor(-1)*/
 {
 	//create the motor control object
 	CPhidgetMotorControl_create(&motoControl);
@@ -90,6 +103,9 @@ Controller::Controller()
 	//open the interfacekit for device connections
 	CPhidget_open((CPhidgetHandle)ifKit, -1);
 	
+	CPhidgetAdvancedServo_create(&servo);
+	CPhidget_open((CPhidgetHandle)servo, -1);
+	
 	int result;
 	const char *err;
 	if((result = CPhidget_waitForAttachment((CPhidgetHandle)ifKit, 10000)))
@@ -115,6 +131,8 @@ Controller::Controller()
 	//get the program to wait for a motor control device to be attached
 	CPhidget_waitForAttachment((CPhidgetHandle)motoControl, 10000);
 
+	CPhidgetAdvancedServo_setEngaged(servo, 0, 1);
+	CPhidgetAdvancedServo_setPosition (servo, 0, 40.00);
 }
 
 int Controller::getSensorValue(int sensorId)
@@ -142,6 +160,16 @@ int Controller::getIRLeftValue()
 int Controller::getIRRightValue()
 {
         return getSensorValue(1);
+}
+
+void Controller::openServo()
+{
+        CPhidgetAdvancedServo_setPosition (servo, 0, servoOpen);
+}
+
+void Controller::closeServo()
+{
+        CPhidgetAdvancedServo_setPosition (servo, 0, servoClosed);
 }
 
 void Controller::moveForward()
@@ -243,6 +271,25 @@ void Controller::rotateOnSpot()
 	CPhidgetMotorControl_setVelocity (motoControl, 1, -rotationSpeed);
 }
 
+void Controller::rotateOnSpotLeft()
+{
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, -rotationOnSpotSpeed);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, -rotationOnSpotSpeed);
+
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, -rotationOnSpotSpeed);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, -rotationOnSpotSpeed);
+}
+
+void Controller::rotateOnSpotRight()
+{
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, rotationOnSpotSpeed);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, rotationOnSpotSpeed);
+
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, rotationOnSpotSpeed);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, rotationOnSpotSpeed);
+}
+
+
 void Controller::stop()
 {
         CPhidgetMotorControl_setAcceleration (motoControl, 0, 0);
@@ -256,4 +303,8 @@ Controller::~Controller()
 {
 	CPhidget_close((CPhidgetHandle)motoControl);
 	CPhidget_delete((CPhidgetHandle)motoControl);
+        CPhidgetAdvancedServo_setEngaged(servo, 0, 0);
+	CPhidget_close((CPhidgetHandle)servo);
+	CPhidget_delete((CPhidgetHandle)servo);
+
 }

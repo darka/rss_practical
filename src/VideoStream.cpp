@@ -13,10 +13,14 @@
 
 using namespace cv;
 
-const int CAMERA_WIDTH = 180;
-const int CAMERA_HEIGHT = 135;
+const int CAMERA_WIDTH = 181;
+const int CAMERA_HEIGHT = 96;
 const int REAL_WIDTH = 544;
 const int REAL_HEIGHT = 288;
+
+int a = 4;
+int b = 5;
+int c = 15;
 
 bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera);
 double distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera);
@@ -25,7 +29,7 @@ bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameH
 Controller ctrl;
 CvCapture* capture;
 int stoppedForPicturesCounter = 0;
-
+bool hasBox = false;
 
 bool inRange(unsigned char red, unsigned char green, unsigned char blue, int range)
 {
@@ -149,16 +153,27 @@ void interpolatedCoordinates(int &min_x, int &min_y, int &max_x, int &max_y, int
 
 
 int whiskerIgnoreCounter = 0;
-bool detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
+
+struct BoxDetectionResult
 {
-        bool ret = false;
+        BoxDetectionResult() : detected(false), too_far(false), centered(false) {}
+        bool detected;
+        bool too_far;
+        bool centered;
+};
+
+BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
+{
+        BoxDetectionResult ret;
         IplImage* gray2;
         gray2 = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
         cvCvtColor(frame,gray2,CV_BGR2GRAY);
         CvScalar avg;
         CvScalar avgStd;
         cvAvgSdv(gray2, &avg, &avgStd, NULL);
-        cvThreshold(gray2, gray2, (int)avg.val[0]-7*(int)(avgStd.val[0]/8), 255, CV_THRESH_BINARY_INV);
+        
+        cvThreshold(gray2, gray2, (int)avg.val[0] - a* (int)(avgStd.val[0]/b), 255, CV_THRESH_BINARY_INV);
+        
         cv::Mat gray_CvMat(gray2, false);      
         vector<vector<Point> > contours;
         vector<Vec4i> hierarchy;
@@ -171,7 +186,7 @@ bool detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
         
         for (size_t i = 0; i < contours.size(); ++i)
         {
-                approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/20), true);
+                approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/c), true);
                 squares.push_back(approx);
         }
 
@@ -213,7 +228,7 @@ bool detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                 float ratio = (float)width / height;
                 float boundingBoxArea = width * height;
      
-                
+                // TODO: fix problems with detecting multiple boxes
                 if(1500 > area && area > 300 && 1.6f > ratio && ratio > 0.4f && boundingBoxArea < 2*area)
                 {
                         drawContours(drawing, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
@@ -228,7 +243,41 @@ bool detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                         int max_y_ = max_y;
                         interpolatedCoordinates(min_x, min_y, max_x, max_y, drawing.cols, drawing.rows);
                         ctrl.stop();
-                        ret = detectFeatures(min_x, min_y, max_x, max_y, frameHD);
+                        detectFeatures(min_x, min_y, max_x, max_y, frameHD);
+                        ret.detected = true;
+
+                        
+                        const int center_error = 50;
+                        if (ret.detected)
+                        {
+                                std::cout << "**** box detected with area: " << area << '\n';
+                                ret.too_far = (area < 500);
+                                if (ret.too_far)
+                                {
+                                        std::cout << "**** Box is too far to approach.\n";
+                                }
+                                
+                                int box_center_x = ((min_x + max_x) / 2);
+                                int box_center_y = ((min_y + max_y) / 2);
+                                int image_center_x = REAL_WIDTH / 2;
+                                int image_center_y = REAL_HEIGHT / 2;
+                                std::cout << "**** box at " << box_center_x << ", " << box_center_y << "; image center at " << image_center_x << ", " << image_center_y << "\n";
+
+                                ret.centered = ((image_center_x - center_error) < box_center_x && box_center_x < (image_center_x + center_error));
+                                                                               
+                                /*
+                                ret.centered = ((image_center_x - center_error) < box_center_x && box_center_x < (image_center_x + center_error)) &&
+                                               ((image_center_y - center_error) < box_center_y && box_center_y < (image_center_y + center_error));
+                                */
+                                if (!ret.centered)
+                                {
+                                        std::cout << "**** Box is not centered.\n";
+                                }
+                                if (ret.centered && !ret.too_far)
+                                {
+                                        std::cout << "**** Box can be approached.\n";
+                                }
+                        }
                 
                 }
         }
@@ -330,12 +379,22 @@ void stopAndRotate(Controller& ctrl)
         usleep(1000000);
 }
 
-
+void grabBox(Controller& ctrl)
+{
+        std::cout << "-- Grabbing box\n";
+        ctrl.openServo();
+        ctrl.turn(0); 
+        usleep(1800000);
+        ctrl.closeServo();
+        usleep(1000000);
+        ctrl.stop();
+        hasBox = true;
+}
 
 void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* normalCapture, IplImage* hdCapture, int* boxVec)
 {
         const int freeSpaceThreshold = 70; 
-        const int IRThreshold = 250;
+        const int IRThreshold = 390;
       
         // write the moveable vector
         for (size_t i = 0; i < img->width; ++i)
@@ -351,26 +410,70 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         }
 
         // box detection
-        bool detectedCorrectBox = detectBoxes(normalCapture, hdCapture, boxVec);
+        BoxDetectionResult boxDetectionResult = detectBoxes(normalCapture, hdCapture, boxVec);
+        
+        // can we grab the box?
+        if (!hasBox && boxDetectionResult.detected && !boxDetectionResult.too_far && boxDetectionResult.centered)
+        {
+                ctrl.stop();
+                usleep(500000);
+                grabBox(ctrl);
+                return;
+        }
+
+        std::pair<size_t, size_t> boxLine = longestLine(boxVec, img->width);
+                
+        // are we so close to the box that we only need to rotate so we face it?
+        if (!hasBox && boxDetectionResult.detected && !boxDetectionResult.too_far && !boxDetectionResult.centered)
+        {
+                
+                ctrl.stop();
+                usleep(100000);
+                size_t line_center = (boxLine.first + boxLine.second) / 2;
+                bool rotateLeft = line_center < CAMERA_WIDTH / 2;
+                std::cout << "box center: " << line_center << "; camera center: " << (CAMERA_WIDTH / 2) << '\n';
+                if (rotateLeft)
+                {
+                        // rotate left
+                        std::cout << "---- moving on the spot left\n";
+                        ctrl.rotateOnSpotLeft();
+                }
+                else
+                {
+                        // rotate right
+                        std::cout << "---- moving on the spot right\n";
+                        ctrl.rotateOnSpotRight();
+                }
+                usleep(100000);
+                ctrl.stop();
+                usleep(500000);
+                return;
+        }
         
         // determine if should move towards box        
-        std::pair<size_t, size_t> boxLine = longestLine(boxVec, img->width);
-        bool moveTowardsBox;
+        bool moveTowardsBox = false;
         int minBoxDistance = img->height;
-        if (boxLine.second - boxLine.first == 0) 
+        if (!hasBox && boxDetectionResult.detected && boxDetectionResult.too_far) // only move towards box if it is too far
         {
-                moveTowardsBox = false;
-        }
-        else
-        {
-                moveTowardsBox = true;
-                for (size_t i = boxLine.first; i < boxLine.second; ++i)
+                std::cout << "box line: " << boxLine.first << ", " << boxLine.second << '\n';
+                if (boxLine.second - boxLine.first == 0) 
                 {
-                        minBoxDistance = min(minBoxDistance, boxVec[i]);
+                        moveTowardsBox = false;
                 }
+                else
+                {
+                        moveTowardsBox = true;
+                        for (size_t i = boxLine.first; i < boxLine.second; ++i)
+                        {
+                                minBoxDistance = min(minBoxDistance, boxVec[i]);
+                        }
 
-        }
-        
+                }
+        }    
+        if (moveTowardsBox)
+        {
+                std::cout << "Will move towards box.\n";
+        }   
         
         // calculate the line, the centre of which we should move towards
         size_t beginMax = 0;
@@ -430,23 +533,35 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
 
         cvShowImage( "mywindow7", img );
         
-        // calculate the minimum distance between the ground and the obstacles spanned by the line
-        int lowestY = img->height;
-        for (size_t i = beginMax; i <= endMax; ++i)
-        {
-                if (odv[i] < lowestY)
-                        lowestY = odv[i];
-        }
+
         
     
         // centre of the line
-        int goal_dist = (beginMax + endMax) / 2;
-        
-        // signed distance between centre of the line and centre of the image
-        int bottom_dist = goal_dist - (img->width / 2);
-       
         double movement_angle = 0;
+        int goal_dist = 0;
+        int lowestY = 0;
+        if (moveTowardsBox)
+        {
+                lowestY = minBoxDistance;
+                goal_dist = (boxLine.first + boxLine.second) / 2;
+                std::cout << "moving towards box\n";
+        }
+        else
+        {
+                // calculate the minimum distance between the ground and the obstacles spanned by the line
+                lowestY = img->height;
+                for (size_t i = beginMax; i <= endMax; ++i)
+                {
+                        if (odv[i] < lowestY)
+                                lowestY = odv[i];
+                }
+                goal_dist = (beginMax + endMax) / 2;
         
+                // signed distance between centre of the line and centre of the image
+                
+        }
+
+        int bottom_dist = goal_dist - (img->width / 2);
         if (bottom_dist != 0) 
         {
 
@@ -457,7 +572,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
 		        if (movement_angle > 0)
 		        { 
 					movement_angle = 90 - movement_angle;
-				}
+			}
 		        if (movement_angle < 0)
 		        { 
 		        	movement_angle = -90 - movement_angle;
@@ -485,7 +600,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         }
 
         
-        if (Controller::whiskersTouched)
+        /*if (Controller::whiskersTouched)
         {
                 std::cout << "Moving back: whiskers touched\n";
                 Controller::whiskersTouched = false;
@@ -498,7 +613,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
                 {
                         whiskerIgnoreCounter--;
                 }                
-        }
+        }*/
 
         
         if (moveBack)
@@ -518,9 +633,12 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         		}
         }
 
+        std::cout << "counter: " << stoppedForPicturesCounter << ", angle: " << movement_angle << '\n';
         if (stoppedForPicturesCounter <= 1)
         {
         	ctrl.turn(movement_angle);
+        	if (moveTowardsBox)
+        	        usleep(500000);
         }        
 }
 
@@ -534,15 +652,15 @@ std::vector<std::string> image_names;
 void initSift()
 {
 
-        image_names.push_back("walle.png");
+        /*image_names.push_back("walle.png");
         image_names.push_back("ferrari.png");
         image_names.push_back("celebes.png");
         image_names.push_back("fry.png");
         image_names.push_back("mario.png");
-        image_names.push_back("terminator.png");
-        image_names.push_back("iron.png");
+        image_names.push_back("terminator.png");*/
+        /*image_names.push_back("iron.png");*/
         image_names.push_back("starry.png");
-        image_names.push_back("thor.png");
+        /*image_names.push_back("thor.png");*/
 
 
         for (size_t i = 0; i < image_names.size(); ++i)
@@ -660,7 +778,7 @@ bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameH
                         }
                         std::cout << image_names[image_iter] << "   keypoints: " << count << '\n';  
                         
-                        if (count >= 15) 
+                        if (count >= 11) 
                         {
                                 ret = true;
                                 cv::Mat outputCam;
@@ -753,6 +871,21 @@ int main(int argc, char** argv) {
         cvNamedWindow( "mywindow5", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow6", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow7", CV_WINDOW_AUTOSIZE );
+        
+        cvMoveWindow("mywindow", 0, 20);
+        cvMoveWindow("mywindow2", 400, 20);
+        cvMoveWindow("mywindow3", 800, 20);
+        cvMoveWindow("mywindow3", 0, 320);
+        cvMoveWindow("mywindow4", 400, 320);
+        cvMoveWindow("mywindow5", 800, 320);
+        cvMoveWindow("mywindow6", 0, 620);
+        cvMoveWindow("mywindow7", 400, 620);
+
+
+        cvCreateTrackbar( "lalala1", "mywindow2", &a, 40, NULL );
+        cvCreateTrackbar( "lalala2", "mywindow2", &b, 40, NULL );
+        cvCreateTrackbar( "lalala3", "mywindow2", &c, 40, NULL );
+
 
         int odv[CAMERA_WIDTH];
         int boxVec[CAMERA_WIDTH];
@@ -770,6 +903,8 @@ int main(int argc, char** argv) {
                 
                 // resize image from camera for real time navigations
                 cvResize(orig, orig_small);
+                
+                cvShowImage("mywindow3", orig_small);
                 
                 // preprocessed frame for navigation
                 IplImage* prepared = cvCreateImage(cvSize(orig_small->width,orig_small->height),IPL_DEPTH_8U, orig_small->nChannels);
