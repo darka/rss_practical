@@ -245,6 +245,12 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
         int idx = 0;
         for( ; idx >= 0; idx = hierarchy[idx][0] )
         {
+                std::cout << "-----\n";
+                for (vector<Point>::iterator i = squares[idx].begin(); i != squares[idx].end(); ++i)
+                {
+                        std::cout << " < " << (*i) << '\n';
+                }
+                
                 Mat m(squares[idx]);
                 double area = contourArea(m);
                 cv::RotatedRect box = cv::minAreaRect(m);
