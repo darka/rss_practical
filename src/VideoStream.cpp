@@ -18,9 +18,17 @@ const int CAMERA_HEIGHT = 96;
 const int REAL_WIDTH = 544;
 const int REAL_HEIGHT = 288;
 
+/*
 int a = 4;
 int b = 5;
 int c = 15;
+*/
+int contourMinSize = 80;
+int a = 18;
+int b = 17;
+int c = 40;
+int d = 29;
+int e = 10;
 
 bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera);
 double distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera);
@@ -168,18 +176,61 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
         IplImage* gray2;
         gray2 = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
         cvCvtColor(frame,gray2,CV_BGR2GRAY);
+        
+        IplImage* gray2Dilated = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
+        cvCopy(gray2, gray2Dilated);
+        //cvNot(gray2, gray2Inv);
+        
+        
         CvScalar avg;
         CvScalar avgStd;
         cvAvgSdv(gray2, &avg, &avgStd, NULL);
         
         cvThreshold(gray2, gray2, (int)avg.val[0] - a* (int)(avgStd.val[0]/b), 255, CV_THRESH_BINARY_INV);
         
-        cv::Mat gray_CvMat(gray2, false);      
+        cvThreshold(gray2Dilated, gray2Dilated, (int)avg.val[0] - d* (int)(avgStd.val[0]/e), 255, CV_THRESH_BINARY_INV);
+        cvDilate(gray2Dilated, gray2Dilated, NULL, 2);
+        
+        //cvShowImage("mywindow4", gray2);
+                
+        /*CvScalar avgInv;
+        CvScalar avgStdInv;
+        cvAvgSdv(gray2Inv, &avgInv, &avgStdInv, NULL);
+        
+        */
+        //cvShowImage("mywindow8", gray2Dilated);
+        
+        cv::Mat gray_CvMat(gray2, false);
+        
+        /*cv::Mat holes=gray_CvMat.clone();
+        cv::floodFill(holes,cv::Point2i(0,0),cv::Scalar(1));
+        for(int i=0;i<gray_CvMat.rows*gray_CvMat.cols;i++)
+        {
+        if(holes.data[i]==0)
+            gray_CvMat.data[i]=1;
+        }*/
+        
+        cv::Mat grayDilated_CvMat(gray2Dilated, false);
+        
+        /*cv::Mat holesDilated=grayDilated_CvMat.clone();
+        cv::floodFill(holesDilated,cv::Point2i(0,0),cv::Scalar(1));
+        */
+        
+        // TODO: instead of OR'ing these two images, OR the contours detected on them
+        /*for(int i=0;i<gray_CvMat.rows*gray_CvMat.cols;i++)
+        {
+        if(grayDilated_CvMat.data[i]==255)
+            gray_CvMat.data[i]=255;
+        }*/
+       
+        imshow("mywindow4", gray_CvMat);
+        imshow("mywindow8",  grayDilated_CvMat);
+        
+              
         vector<vector<Point> > contours;
         vector<Vec4i> hierarchy;
         
-
-        findContours(gray_CvMat, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        findContours(grayDilated_CvMat, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         Mat drawing = Mat::zeros( gray_CvMat.size(), CV_8UC1 );    
         vector<vector<Point> > squares;
         vector<Point> approx;
@@ -229,7 +280,7 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                 float boundingBoxArea = width * height;
      
                 // TODO: fix problems with detecting multiple boxes
-                if(1500 > area && area > 300 && 1.6f > ratio && ratio > 0.4f && boundingBoxArea < 2*area)
+                if(1500 > area && area > contourMinSize && 1.6f > ratio && ratio > 0.4f && boundingBoxArea < 2*area)
                 {
                         drawContours(drawing, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
 
@@ -417,7 +468,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         {
                 ctrl.stop();
                 usleep(500000);
-                grabBox(ctrl);
+                //grabBox(ctrl);
                 return;
         }
 
@@ -436,13 +487,13 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
                 {
                         // rotate left
                         std::cout << "---- moving on the spot left\n";
-                        ctrl.rotateOnSpotLeft();
+                        //ctrl.rotateOnSpotLeft();
                 }
                 else
                 {
                         // rotate right
                         std::cout << "---- moving on the spot right\n";
-                        ctrl.rotateOnSpotRight();
+                        //ctrl.rotateOnSpotRight();
                 }
                 usleep(100000);
                 ctrl.stop();
@@ -618,7 +669,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         
         if (moveBack)
         {
-                moveBackConsideringFreeSpace(img, odv, ctrl);
+                //moveBackConsideringFreeSpace(img, odv, ctrl);
                 return;
         }
         
@@ -636,7 +687,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         std::cout << "counter: " << stoppedForPicturesCounter << ", angle: " << movement_angle << '\n';
         if (stoppedForPicturesCounter <= 1)
         {
-        	ctrl.turn(movement_angle);
+        	//ctrl.turn(movement_angle);
         	if (moveTowardsBox)
         	        usleep(500000);
         }        
@@ -871,6 +922,7 @@ int main(int argc, char** argv) {
         cvNamedWindow( "mywindow5", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow6", CV_WINDOW_AUTOSIZE );
         cvNamedWindow( "mywindow7", CV_WINDOW_AUTOSIZE );
+        cvNamedWindow( "mywindow8", CV_WINDOW_AUTOSIZE );
         
         cvMoveWindow("mywindow", 0, 20);
         cvMoveWindow("mywindow2", 400, 20);
@@ -880,12 +932,15 @@ int main(int argc, char** argv) {
         cvMoveWindow("mywindow5", 800, 320);
         cvMoveWindow("mywindow6", 0, 620);
         cvMoveWindow("mywindow7", 400, 620);
+        cvMoveWindow("mywindow8", 800, 620);
 
 
-        cvCreateTrackbar( "lalala1", "mywindow2", &a, 40, NULL );
-        cvCreateTrackbar( "lalala2", "mywindow2", &b, 40, NULL );
-        cvCreateTrackbar( "lalala3", "mywindow2", &c, 40, NULL );
-
+        cvCreateTrackbar( "a", "mywindow2", &a, 40, NULL );
+        cvCreateTrackbar( "b", "mywindow2", &b, 40, NULL );
+        cvCreateTrackbar( "c", "mywindow2", &c, 100, NULL );
+        cvCreateTrackbar( "d", "mywindow8", &d, 40, NULL );
+        cvCreateTrackbar( "e", "mywindow8", &e, 40, NULL );
+        cvCreateTrackbar( "size", "mywindow8", &contourMinSize, 1000, NULL );
 
         int odv[CAMERA_WIDTH];
         int boxVec[CAMERA_WIDTH];
@@ -948,6 +1003,7 @@ int main(int argc, char** argv) {
         cvDestroyWindow( "mywindow5" );
         cvDestroyWindow( "mywindow6" );
         cvDestroyWindow( "mywindow7" );
+        cvDestroyWindow( "mywindow8" );
 
         return 0;
 }
