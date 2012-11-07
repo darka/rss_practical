@@ -243,99 +243,102 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
 
 
         int idx = 0;
-        for( ; idx >= 0; idx = hierarchy[idx][0] )
+        if (!squares.empty())
         {
-                std::cout << "-----\n";
-                for (vector<Point>::iterator i = squares[idx].begin(); i != squares[idx].end(); ++i)
+                for( ; idx >= 0; idx = hierarchy[idx][0] )
                 {
-                        std::cout << " < " << (*i) << '\n';
-                }
-                
-                Mat m(squares[idx]);
-                double area = contourArea(m);
-                cv::RotatedRect box = cv::minAreaRect(m);
-                
-                cv::Point2f rBPts[4];
-                box.points(rBPts);
-                int min_x = rBPts[0].x;
-                int max_x = rBPts[0].x;
-                int min_y = rBPts[0].y;
-                int max_y = rBPts[0].y;
-
-                for(int i = 0; i < 3 ; i++){
-
-                        if(rBPts[i+1].y > max_y){
-                                max_y = std::min((int)rBPts[i+1].y, frame->height);
-                        }
-
-                        if(rBPts[i+1].y < min_y){
-                                min_y = std::max(0, (int)rBPts[i+1].y);
-                        }
-                        if(rBPts[i+1].x > max_x){
-                                max_x = std::min((int)rBPts[i+1].x, frame->width);
-                        }
-                        if(rBPts[i+1].x < min_x){
-                                min_x = std::max((int)rBPts[i+1].x, 0);
-                        }
-                        
-                }
-                
-                int width = max_x - min_x;
-                int height = max_y - min_y;
-                float ratio = (float)width / height;
-                float boundingBoxArea = width * height;
-     
-                // TODO: fix problems with detecting multiple boxes
-                if(1500 > area && area > contourMinSize && 1.6f > ratio && ratio > 0.4f && boundingBoxArea < 2*area)
-                {
-                        drawContours(drawing, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
-
-                        if (stoppedForPicturesCounter == 0)
-                                stoppedForPicturesCounter = 5;
-        
-
-                        int min_x_ = min_x;
-                        int min_y_ = min_y;
-                        int max_x_ = max_x;
-                        int max_y_ = max_y;
-                        interpolatedCoordinates(min_x, min_y, max_x, max_y, drawing.cols, drawing.rows);
-                        ctrl.stop();
-                        detectFeatures(min_x, min_y, max_x, max_y, frameHD);
-                        ret.detected = true;
-
-                        
-                        const int center_error = 50;
-                        if (ret.detected)
+                        std::cout << "-----\n";
+                        for (vector<Point>::iterator i = squares[idx].begin(); i != squares[idx].end(); ++i)
                         {
-                                std::cout << "**** box detected with area: " << area << '\n';
-                                ret.too_far = (area < 500);
-                                if (ret.too_far)
-                                {
-                                        std::cout << "**** Box is too far to approach.\n";
+                                std::cout << " < " << (*i) << '\n';
+                        }
+                        
+                        Mat m(squares[idx]);
+                        double area = contourArea(m);
+                        cv::RotatedRect box = cv::minAreaRect(m);
+                        
+                        cv::Point2f rBPts[4];
+                        box.points(rBPts);
+                        int min_x = rBPts[0].x;
+                        int max_x = rBPts[0].x;
+                        int min_y = rBPts[0].y;
+                        int max_y = rBPts[0].y;
+
+                        for(int i = 0; i < 3 ; i++){
+
+                                if(rBPts[i+1].y > max_y){
+                                        max_y = std::min((int)rBPts[i+1].y, frame->height);
+                                }
+
+                                if(rBPts[i+1].y < min_y){
+                                        min_y = std::max(0, (int)rBPts[i+1].y);
+                                }
+                                if(rBPts[i+1].x > max_x){
+                                        max_x = std::min((int)rBPts[i+1].x, frame->width);
+                                }
+                                if(rBPts[i+1].x < min_x){
+                                        min_x = std::max((int)rBPts[i+1].x, 0);
                                 }
                                 
-                                int box_center_x = ((min_x + max_x) / 2);
-                                int box_center_y = ((min_y + max_y) / 2);
-                                int image_center_x = REAL_WIDTH / 2;
-                                int image_center_y = REAL_HEIGHT / 2;
-                                std::cout << "**** box at " << box_center_x << ", " << box_center_y << "; image center at " << image_center_x << ", " << image_center_y << "\n";
-
-                                ret.centered = ((image_center_x - center_error) < box_center_x && box_center_x < (image_center_x + center_error));
-                                                                               
-                                /*
-                                ret.centered = ((image_center_x - center_error) < box_center_x && box_center_x < (image_center_x + center_error)) &&
-                                               ((image_center_y - center_error) < box_center_y && box_center_y < (image_center_y + center_error));
-                                */
-                                if (!ret.centered)
-                                {
-                                        std::cout << "**** Box is not centered.\n";
-                                }
-                                if (ret.centered && !ret.too_far)
-                                {
-                                        std::cout << "**** Box can be approached.\n";
-                                }
                         }
+                        
+                        int width = max_x - min_x;
+                        int height = max_y - min_y;
+                        float ratio = (float)width / height;
+                        float boundingBoxArea = width * height;
+             
+                        // TODO: fix problems with detecting multiple boxes
+                        if(1500 > area && area > contourMinSize && 1.6f > ratio && ratio > 0.4f && boundingBoxArea < 2*area)
+                        {
+                                drawContours(drawing, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+
+                                if (stoppedForPicturesCounter == 0)
+                                        stoppedForPicturesCounter = 5;
                 
+
+                                int min_x_ = min_x;
+                                int min_y_ = min_y;
+                                int max_x_ = max_x;
+                                int max_y_ = max_y;
+                                interpolatedCoordinates(min_x, min_y, max_x, max_y, drawing.cols, drawing.rows);
+                                ctrl.stop();
+                                detectFeatures(min_x, min_y, max_x, max_y, frameHD);
+                                ret.detected = true;
+
+                                
+                                const int center_error = 50;
+                                if (ret.detected)
+                                {
+                                        std::cout << "**** box detected with area: " << area << '\n';
+                                        ret.too_far = (area < 500);
+                                        if (ret.too_far)
+                                        {
+                                                std::cout << "**** Box is too far to approach.\n";
+                                        }
+                                        
+                                        int box_center_x = ((min_x + max_x) / 2);
+                                        int box_center_y = ((min_y + max_y) / 2);
+                                        int image_center_x = REAL_WIDTH / 2;
+                                        int image_center_y = REAL_HEIGHT / 2;
+                                        std::cout << "**** box at " << box_center_x << ", " << box_center_y << "; image center at " << image_center_x << ", " << image_center_y << "\n";
+
+                                        ret.centered = ((image_center_x - center_error) < box_center_x && box_center_x < (image_center_x + center_error));
+                                                                                       
+                                        /*
+                                        ret.centered = ((image_center_x - center_error) < box_center_x && box_center_x < (image_center_x + center_error)) &&
+                                                       ((image_center_y - center_error) < box_center_y && box_center_y < (image_center_y + center_error));
+                                        */
+                                        if (!ret.centered)
+                                        {
+                                                std::cout << "**** Box is not centered.\n";
+                                        }
+                                        if (ret.centered && !ret.too_far)
+                                        {
+                                                std::cout << "**** Box can be approached.\n";
+                                        }
+                                }
+                        
+                        }
                 }
         }
         
