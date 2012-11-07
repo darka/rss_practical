@@ -12,16 +12,16 @@ sift: sift.cpp
 	
 
 Controller.o: Controller.cpp Controller.hpp
-	g++ -c Controller.cpp -o Controller.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21 -O3 -g
+	g++ -c Controller.cpp -o Controller.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21 -O3 -g -pg
 	
 VideoStream.o: VideoStream.cpp Controller.o
-	g++ -c VideoStream.cpp -o VideoStream.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21  -lopencv_calib3d -lopencv_features2d -O3 -g
+	g++ -c VideoStream.cpp -o VideoStream.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21  -lopencv_calib3d -lopencv_features2d -O3 -g -pg
 
 TestControl.o: TestControl.cpp Controller.o
-	g++ -c TestControl.cpp -o TestControl.o -lphidget21 -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_features2d -g
+	g++ -c TestControl.cpp -o TestControl.o -lphidget21 -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_features2d -g -pg
 	
 VideoStream: VideoStream.o Controller.o
-	g++ -o VideoStream VideoStream.o Controller.o  -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d -O3 -g
+	g++ -o VideoStream VideoStream.o Controller.o  -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d -O3 -g -pg
 
 TestControl: TestControl.o Controller.o
 	g++ -o TestControl TestControl.o Controller.o  -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d
