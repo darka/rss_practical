@@ -42,6 +42,25 @@ int c = 28;
 int d = 11;
 int e = 4;
 
+int minHue = 0;
+int maxHue = 0;
+int minSat = 0;
+int maxSat = 0;
+int minVal = 0;
+int maxVal = 0;
+
+std::vector< std::vector<cv::KeyPoint>* > sift_keypoints;
+std::vector< int > keypoint_match_count;
+std::vector< cv::Mat > sift_descriptors;
+
+cv::SiftFeatureDetector detector;
+cv::SiftDescriptorExtractor extractor;
+std::vector<std::string> image_names;     
+
+std::vector<std::string> base_image_names;  
+std::vector< std::vector<cv::KeyPoint>* > base_sift_keypoints;
+std::vector< cv::Mat > base_sift_descriptors;
+
 bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera);
 double distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera);
 bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameHD);
@@ -76,6 +95,24 @@ bool inRange(unsigned char red, unsigned char green, unsigned char blue, int ran
                  (max(green, red) - min(green, red))) >= diffRange )
              return false;
         return true;
+
+}        cv::Mat captureHsv;
+
+bool inRangeHsv(unsigned char hue, unsigned char sat, unsigned char val, int range)
+{
+        const char diffRange = 14;
+        const char blackness = 70;
+        /*
+        if (red <= blackness || green <= blackness || blue <= blackness)
+                return false;
+        if ( max(max((max(red, blue) - min(red, blue)),
+                 (max(green, blue) - min(green, blue))),
+                 (max(green, red) - min(green, red))) >= diffRange )
+             return false;*/
+        //std::cout << ((int)hue) << ' ' << ((int)sat) << ' ' << ((int)val) << '\n';
+        if (maxHue >= hue && hue >= minHue && maxSat >= sat && sat >= minSat && maxVal >= val && val >= minVal)
+                return true;     
+        return false;
 
 }
 
@@ -144,6 +181,73 @@ void segment_floor(IplImage* src, IplImage* dst, int* odv)
         }
         
         if (windowsEnabled) cvShowImage( "mywindow3", dst ); 	
+}
+
+void segment_base(IplImage* src, IplImage* dst/*, int* odv*/)
+{
+        const int floor_range = 13;
+        
+        for (int i = 0; i < src->height; i++)
+        {
+                for (int k = 0; k < src->width; k += 1)
+                {
+                        int j = k * dst->nChannels;
+                        unsigned char red = src->imageData[i * src->widthStep + j + 2];
+                        unsigned char green = src->imageData[i * src->widthStep + j + 1];
+                        unsigned char blue = src->imageData[i * src->widthStep + j];
+                        
+                        if (!inRangeHsv(red, green, blue, floor_range))
+                        {
+
+                                const unsigned char value = 0;
+
+                                ((uchar *)(dst->imageData + i * dst->widthStep))[j] = blue;
+                                ((uchar *)(dst->imageData + i * dst->widthStep))[j+1] = green;
+                                ((uchar *)(dst->imageData + i * dst->widthStep))[j+2] = red;
+                        }
+                        else
+                        {
+                                const unsigned char value = 255;
+
+                                ((uchar *)(dst->imageData + i * dst->widthStep))[j] = value;
+                                ((uchar *)(dst->imageData + i * dst->widthStep))[j+1] = value;
+                                ((uchar *)(dst->imageData + i * dst->widthStep))[j+2] = value;
+                        }
+                }
+        }
+        
+        //std::memset(odv, 0, sizeof(int));
+/*
+        
+        for (int i = 0; i < dst->height; i++)
+        {
+                for (int k = 0; k < dst->width; k += 1)
+                {
+                        int j = k * dst->nChannels;
+                        unsigned char red = dst->imageData[i * dst->widthStep + j + 2];
+                        unsigned char green = dst->imageData[i * dst->widthStep + j + 1];
+                        unsigned char blue = dst->imageData[i * dst->widthStep + j];
+                        if (red == 255 && green == 255 && blue == 255)
+                        {
+                        
+                        }
+                        else 
+                        { 
+                                if (odv[k] < i)
+                                {
+                                        odv[k] = i;
+                                }  
+                       }
+                      
+                }
+        }
+        
+        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
+        {
+          odv[i] = dst->height - odv[i];
+        }
+*/        
+        if (windowsEnabled) cvShowImage( "mywindow9", dst ); 	
 }
 
 
@@ -559,6 +663,33 @@ void grabBox(Controller& ctrl)
 bool lastMoveWasTowardsBox = false;
 void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* normalCapture, IplImage* hdCapture, int* boxVec)
 {
+        std::vector<cv::KeyPoint> keypoints_camera;   
+        
+        IplImage* captureHsv = cvCreateImage( cvSize(normalCapture->width, normalCapture->height), IPL_DEPTH_8U, 3);
+        cvCvtColor(normalCapture, captureHsv, CV_RGB2HSV);
+        IplImage* captureHsvSeg = cvCreateImage( cvSize(normalCapture->width, normalCapture->height), IPL_DEPTH_8U, 3);
+        segment_base(captureHsv, captureHsvSeg);
+        //imshow("mywindow9", captureHsv);
+        
+        
+
+        //detector.detect(captureGray, keypoints_camera);
+        //cv::Mat descriptors_camera;
+        //extractor.compute(captureGray, keypoints_camera, descriptors_camera);
+/*        
+        for (size_t base_image_iter = 0; base_image_iter != base_sift_keypoints.size(); ++base_image_iter)
+        {
+                unsigned int count = 0;
+                for (size_t i = 0; i < base_sift_keypoints[base_image_iter]->size(); ++i) {
+
+                        if(checkForMatch(i, keypoints_camera, base_sift_descriptors[base_image_iter], descriptors_camera))
+                        {
+                                count++;
+                        }
+                }
+                std::cout << base_image_names[base_image_iter] << "   keypoints: " << count << '\n';  
+        }        
+*/
         const int freeSpaceThreshold = 20; 
         const int IRThreshold = 180;
       
@@ -860,17 +991,10 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         }        
 }
 
-std::vector< std::vector<cv::KeyPoint>* > sift_keypoints;
-std::vector< int > keypoint_match_count;
-std::vector< cv::Mat > sift_descriptors;
-cv::Mat sift_images;
-cv::SiftFeatureDetector detector;
-cv::SiftDescriptorExtractor extractor;
-std::vector<std::string> image_names;     
 
 void initSift()
 {
-
+        
         image_names.push_back("walle.png");
         keypoint_match_count.push_back(13);
         image_names.push_back("ferrari.png");
@@ -891,6 +1015,9 @@ void initSift()
         keypoint_match_count.push_back(13);
 
 
+        base_image_names.push_back("base1.png");
+        base_image_names.push_back("base2.png");
+        
         for (size_t i = 0; i < image_names.size(); ++i)
         {
                 std::cout << "Generating descriptors for: " << image_names[i] << '\n';
@@ -899,13 +1026,29 @@ void initSift()
                 detector.detect(input, *keypoints_image);                
                 cv::Mat descriptors_image;
                 extractor.compute(input, *keypoints_image, descriptors_image);                
-                sift_images = input;
+
                 sift_keypoints.push_back(keypoints_image);
                 sift_descriptors.push_back(descriptors_image);
                 std::cout << "Keypoints: " << sift_keypoints[i]->size() << '\n';
                 
                 //imshow("mywindow6", input);
         } 
+        /*
+        for (size_t i = 0; i < base_image_names.size(); ++i)
+        {
+                std::cout << "Generating descriptors for: " << base_image_names[i] << '\n';
+                cv::Mat input = cv::imread(base_image_names[i], 0);
+                std::vector<cv::KeyPoint>* keypoints_image = new std::vector<cv::KeyPoint>();
+                detector.detect(input, *keypoints_image);                
+                cv::Mat descriptors_image;
+                extractor.compute(input, *keypoints_image, descriptors_image);                
+
+                base_sift_keypoints.push_back(keypoints_image);
+                base_sift_descriptors.push_back(descriptors_image);
+                std::cout << "Keypoints: " << base_sift_keypoints[i]->size() << '\n';
+                
+                //imshow("mywindow6", input);
+        } */
         
 }
 
@@ -1097,6 +1240,7 @@ IplImage* grabFrame()
         
         return cvRetrieveFrame( capture );
 }
+
 IplImage* orig = NULL;
 bool origReady = false;
 void* cameraThread(void* Param)
@@ -1155,6 +1299,7 @@ int main(int argc, char** argv) {
                 cvNamedWindow( "mywindow6", CV_WINDOW_AUTOSIZE );
                 //cvNamedWindow( "mywindow7", CV_WINDOW_AUTOSIZE );
                 cvNamedWindow( "mywindow8", CV_WINDOW_AUTOSIZE );
+                cvNamedWindow( "mywindow9", CV_WINDOW_AUTOSIZE );
                 
                 cvMoveWindow("mywindow", 0, 20);
                 cvMoveWindow("mywindow2", 400, 20);
@@ -1164,6 +1309,7 @@ int main(int argc, char** argv) {
                 cvMoveWindow("mywindow5", 800, 320);
                 cvMoveWindow("mywindow6", 0, 620);
                 cvMoveWindow("mywindow8", 800, 620);
+                cvMoveWindow("mywindow9", 600, 620);
                 
 
 
@@ -1176,6 +1322,12 @@ int main(int argc, char** argv) {
                 cvCreateTrackbar( "maxRatio", "mywindow4", &maxRatio, 2000, NULL );
                 cvCreateTrackbar( "min_size", "mywindow4", &contourMinSize, 1000, NULL );
                 cvCreateTrackbar( "max_size", "mywindow4", &contourMaxSize, 1000, NULL );
+                cvCreateTrackbar( "minHue", "mywindow8", &minHue, 255, NULL );
+                cvCreateTrackbar( "maxHue", "mywindow8", &maxHue, 255, NULL );
+                cvCreateTrackbar( "minSat", "mywindow8", &minSat, 255, NULL );
+                cvCreateTrackbar( "maxSat", "mywindow8", &maxSat, 255, NULL );
+                cvCreateTrackbar( "minVal", "mywindow8", &minVal, 255, NULL );
+                cvCreateTrackbar( "maxVal", "mywindow8", &maxVal, 255, NULL );
         }
         int odv[CAMERA_WIDTH];
         int boxVec[CAMERA_WIDTH];
@@ -1248,6 +1400,7 @@ int main(int argc, char** argv) {
                 cvDestroyWindow( "mywindow5" );
                 cvDestroyWindow( "mywindow6" );
                 cvDestroyWindow( "mywindow8" );
+                cvDestroyWindow( "mywindow9" );
         }
        /* cvDestroyWindow( "mywindow7" );
         */
