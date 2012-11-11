@@ -14,12 +14,15 @@
 int main(int argc, char** argv) {
         Controller ctrl;
         usleep(2000000);
-        ctrl.turn(-50);
+        ctrl.turnAt(45);
         usleep(1000000);
-        ctrl.turn(50);
+        ctrl.turnAt(-45);
         usleep(1000000);
+       // ctrl.turnAt(22);
+        usleep(1000000);
+       // ctrl.turnAt(-22);
+        //usleep(1000000);
         /*
-        
         ctrl.openServo();
         //ctrl.rotateOnSpotLeft();
         
@@ -31,5 +34,5 @@ int main(int argc, char** argv) {
         //ctrl.moveBackwardLeft();
         
         //usleep(1500);*/
-        ctrl.stop();
+        //ctrl.stop();
 }

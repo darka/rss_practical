@@ -1,6 +1,8 @@
 #include "Controller.hpp"
 #include <iostream>
 #include <cassert>
+#include <cmath>
+#include <algorithm>
 
 int AttachHandler(CPhidgetHandle MC, void *userptr)
 {
@@ -58,10 +60,10 @@ Controller::Controller()
 : motoControl(0)
 , speed(45)
 , speedLeftFactor(1.0)
-, speedRightFactor(1.2)
+, speedRightFactor(1.0)
 , accelLeftFactor(1.0)
-, accelRightFactor(1.2)
-, rotationOnSpotSpeed(50)
+, accelRightFactor(1.0)
+, rotationOnSpotSpeed(100)
 , accel(45)
 , backwardTurnFastFactor(1.5)
 , backwardTurnSlowFactor(-1.5)
@@ -248,17 +250,45 @@ void Controller::turnLeft()
         CPhidgetMotorControl_setAcceleration (motoControl, 0, 0);
 	CPhidgetMotorControl_setVelocity (motoControl, 0, 0);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, accel * accelRightFactor);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, speed * speedRightFactor);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, accel * accelRightFactor *0.7);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, speed * speedRightFactor *0.7);
+	/*usleep(500000);
+	rotateOnSpotLeft();
+	usleep(50000);*/
+}
+
+void Controller::turnAt(double angle)
+{
+        int turnSpeed = 55;
+        int turnDelay = 250000;
+        if (-22 < angle && angle < 22)
+        {
+                moveForward();
+                usleep(500000);
+                return;
+        }
+        if (angle > 0) angle = std::min(angle, 45.0);
+        else if (angle < 0) angle = std::max(angle, -45.0);
+        int sign = (int) (angle / std::abs(angle));
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, sign * turnSpeed);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, sign * turnSpeed);
+
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, sign * turnSpeed);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, sign * turnSpeed);
+	usleep((std::abs(angle) * turnDelay) / 45);
+	stop();
 }
 
 void Controller::turnRight()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, -accel * accelLeftFactor);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, -speed * speedLeftFactor);
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, -accel * accelLeftFactor *0.7);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, -speed * speedLeftFactor *0.7);
 
 	CPhidgetMotorControl_setAcceleration (motoControl, 1, 0);
 	CPhidgetMotorControl_setVelocity (motoControl, 1, 0);
+	/*usleep(500000);
+	rotateOnSpotRight();
+	usleep(50000);*/
 }
 
 void Controller::rotateOnSpot()

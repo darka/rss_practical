@@ -22,6 +22,7 @@ public:
   void rotateOnSpotRight();
   void openServo();
   void closeServo();
+  void turnAt(double angle);
   
   int getIRLeftValue();
   int getIRRightValue();
