@@ -259,12 +259,12 @@ void Controller::turnLeft()
 
 void Controller::turnAt(double angle)
 {
-        int turnSpeed = 55;
+        int turnSpeed = 40;
         int turnDelay = 250000;
         if (-22 < angle && angle < 22)
         {
                 moveForward();
-                usleep(500000);
+                usleep(350000);
                 return;
         }
         if (angle > 0) angle = std::min(angle, 45.0);

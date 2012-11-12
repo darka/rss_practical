@@ -12,7 +12,7 @@
 
 
 using namespace cv;
-
+RNG rng(12345);
 /*
 const int CAMERA_WIDTH = 181;
 const int CAMERA_HEIGHT = 96;
@@ -23,7 +23,7 @@ const int CAMERA_WIDTH = 140;
 const int CAMERA_HEIGHT = 80;
 const int REAL_WIDTH = 432;
 const int REAL_HEIGHT = 240;
-bool movementEnabled = true;
+bool movementEnabled = false;
 bool windowsEnabled = true;
 /*
 int a = 4;
@@ -34,6 +34,7 @@ int saved_angle = -1;
 bool correct_box = false;
 int contourMinSize = 150;
 int contourMaxSize = 700;
+int lowThreshold = 50;
 int minRatio = 500;
 int maxRatio = 1500;
 int a = 18;
@@ -41,6 +42,7 @@ int b = 17;
 int c = 28;
 int d = 11;
 int e = 4;
+int PolygonBase = 25;
 
 int minHue = 0;
 int maxHue = 0;
@@ -84,7 +86,7 @@ BoxModel boxModel;
 
 int boxModelAliveCounter = 3;
 
-bool inRange(unsigned char red, unsigned char green, unsigned char blue, int range)
+inline bool inRange(unsigned char red, unsigned char green, unsigned char blue, int range)
 {
         const char diffRange = 14;
         const char blackness = 70;
@@ -98,7 +100,7 @@ bool inRange(unsigned char red, unsigned char green, unsigned char blue, int ran
 
 }        cv::Mat captureHsv;
 
-bool inRangeHsv(unsigned char hue, unsigned char sat, unsigned char val, int range)
+inline bool inRangeHsv(unsigned char hue, unsigned char sat, unsigned char val, int range)
 {
         const char diffRange = 14;
         const char blackness = 70;
@@ -186,7 +188,7 @@ void segment_floor(IplImage* src, IplImage* dst, int* odv)
 void segment_base(IplImage* src, IplImage* dst/*, int* odv*/)
 {
         const int floor_range = 13;
-        
+         cvDilate(src, src, NULL, 1);
         for (int i = 0; i < src->height; i++)
         {
                 for (int k = 0; k < src->width; k += 1)
@@ -280,7 +282,7 @@ void moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
 }
 
 
-void interpolatedCoordinates(int &min_x, int &min_y, int &max_x, int &max_y, int width, int height)
+inline void interpolatedCoordinates(int &min_x, int &min_y, int &max_x, int &max_y, int width, int height)
 {
 
     min_x = ((float)min_x) / width * REAL_WIDTH;
@@ -514,11 +516,11 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                         boxDetected = ret.detected;
 
                         
-                        const int center_error = 75;
+                        const int center_error = 100;
                         if (ret.detected)
                         {
                                 std::cout << "**** box detected with area: " << area << '\n';
-                                ret.too_far = (area < 400);
+                                ret.too_far = (area < 350);
                                 if (ret.too_far)
                                 {
                                         std::cout << "**** Box is too far to approach.\n";
@@ -577,7 +579,7 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
         return ret;
 }
 
-std::pair<size_t, size_t> longestLine(int* boxVec, size_t size)
+inline std::pair<size_t, size_t> longestLine(int* boxVec, size_t size)
 {
         size_t beginMax = 0;
         size_t distanceMax = 0;
@@ -639,7 +641,7 @@ std::pair<size_t, size_t> longestLine(int* boxVec, size_t size)
 }
 
 
-void stopAndRotate(Controller& ctrl)
+inline void stopAndRotate(Controller& ctrl)
 {
         std::cout << "stopping and rotating...\n";
         ctrl.stop(); 
@@ -648,7 +650,7 @@ void stopAndRotate(Controller& ctrl)
         usleep(1000000);
 }
 
-void grabBox(Controller& ctrl)
+inline void grabBox(Controller& ctrl)
 {
         std::cout << "-- Grabbing box\n";
         ctrl.openServo();
@@ -691,7 +693,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         }        
 */
         const int freeSpaceThreshold = 20; 
-        const int IRThreshold = 180;
+        const int IRThreshold = 210;
       
         // write the moveable vector
         for (size_t i = 0; i < img->width; ++i)
@@ -991,13 +993,13 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         }        
 }
 
-
 void initSift()
 {
         
         image_names.push_back("walle.png");
-        keypoint_match_count.push_back(13);
-        image_names.push_back("ferrari.png");
+        keypoint_match_count.push_back(0);
+        //keypoint_match_count.push_back(13);
+        /*image_names.push_back("ferrari.png");
         keypoint_match_count.push_back(7);
         image_names.push_back("celebes.png");
         keypoint_match_count.push_back(13);
@@ -1012,7 +1014,7 @@ void initSift()
         image_names.push_back("starry.png");
         keypoint_match_count.push_back(13);
         image_names.push_back("thor.png");
-        keypoint_match_count.push_back(13);
+        keypoint_match_count.push_back(13);*/
 
 
         base_image_names.push_back("base1.png");
@@ -1174,7 +1176,7 @@ bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameH
 }
 
 //cv::KeyPoint* checkForMatch(cv::KeyPoint& point, std::vector<cv::KeyPoint>& other_points )
-bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
+inline bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
 {
     double dsq, distsq1 = 100000000, distsq2 = 100000000;
 
@@ -1203,7 +1205,7 @@ bool checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::
 }
 
 
-double distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
+inline double distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
 {
     int i = 0;
     double distsq = 0.0;
@@ -1216,14 +1218,14 @@ double distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, c
     return distsq;
 }
 
-IplImage* small_size_camera_image(IplImage* orig)
+inline IplImage* small_size_camera_image(IplImage* orig)
 {
         IplImage*  orig_small = cvCreateImage( cvSize(CAMERA_WIDTH, CAMERA_HEIGHT), orig->depth, orig->nChannels);
         cvResize(orig, orig_small);
         return orig_small;
 }
         
-IplImage* grabFrame()
+inline IplImage* grabFrame()
 {
 
         /*cvGrabFrame(capture);
@@ -1261,7 +1263,7 @@ void* cameraThread(void* Param)
         {
                 orig = grabFrame();
                 origReady = true;
-                if (windowsEnabled) imshow("mywindow8", orig);
+                //if (windowsEnabled) imshow("mywindow8", orig);
         }        
         
 	pthread_exit(NULL);
@@ -1300,6 +1302,7 @@ int main(int argc, char** argv) {
                 //cvNamedWindow( "mywindow7", CV_WINDOW_AUTOSIZE );
                 cvNamedWindow( "mywindow8", CV_WINDOW_AUTOSIZE );
                 cvNamedWindow( "mywindow9", CV_WINDOW_AUTOSIZE );
+                cvNamedWindow( "mywindow10", CV_WINDOW_AUTOSIZE );                
                 
                 cvMoveWindow("mywindow", 0, 20);
                 cvMoveWindow("mywindow2", 400, 20);
@@ -1310,6 +1313,7 @@ int main(int argc, char** argv) {
                 cvMoveWindow("mywindow6", 0, 620);
                 cvMoveWindow("mywindow8", 800, 620);
                 cvMoveWindow("mywindow9", 600, 620);
+                cvMoveWindow("mywindow10", 600, 620);
                 
 
 
@@ -1328,6 +1332,8 @@ int main(int argc, char** argv) {
                 cvCreateTrackbar( "maxSat", "mywindow8", &maxSat, 255, NULL );
                 cvCreateTrackbar( "minVal", "mywindow8", &minVal, 255, NULL );
                 cvCreateTrackbar( "maxVal", "mywindow8", &maxVal, 255, NULL );
+                cvCreateTrackbar( "c", "mywindow10", &lowThreshold, 200, NULL );
+                cvCreateTrackbar( "p", "mywindow10", &PolygonBase, 100, NULL );
         }
         int odv[CAMERA_WIDTH];
         int boxVec[CAMERA_WIDTH];
@@ -1353,6 +1359,67 @@ int main(int argc, char** argv) {
                 //cvShowImage("mywindow", orig);
                 IplImage* orig_small = small_size_camera_image(orig);
                 
+  /// Reduce noise with a kernel 3x3
+  //blur( src_gray, detected_edges, Size(3,3) );
+
+  /// Canny detector
+  Mat detected_edges;
+  cvtColor( orig_small, detected_edges, CV_BGR2GRAY );
+  dilate(detected_edges, detected_edges, getStructuringElement( MORPH_RECT,
+                                       Size( 2* 2 + 1, 2* 2 +1 ),
+                                       Point( 2, 2) ));
+  Canny( detected_edges, detected_edges, lowThreshold, lowThreshold*3, 3 );
+  Mat dst;
+  /// Using Canny's output as a mask, we display our result
+  dst = Scalar::all(0);
+
+  Mat(orig_small).copyTo( dst, detected_edges);
+  vector<vector<Point> > contours;      
+  vector<Vec4i> hierarchy;
+  findContours( detected_edges, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+  vector<Point> approx;
+  vector<vector<Point> > bases;
+  
+  for( int i = 0; i< contours.size(); i++ ) 
+  {
+    approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/PolygonBase), true);
+    bases.push_back(approx);
+  }
+  
+  /// Draw contours
+  Mat contourDrawing = Mat::zeros( detected_edges.size(), CV_8UC1 );
+  for( int i = 0; i< bases.size(); i++ )
+     {
+       Mat m(bases[i]);
+       double area = contourArea(m);
+       if(area > 600)
+       {
+                std::cout << area << "\n";
+                Scalar color = Scalar( 255, 255, 255 );
+                drawContours( contourDrawing, bases, i, color, CV_FILLED, 8, hierarchy, 0, Point(0,0) );
+        }
+     }
+
+  /// Show in a window
+
+  contours.clear();
+  hierarchy.clear();
+  approx.clear();
+  bases.clear();
+  findContours( contourDrawing, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+  for( int i = 0; i< contours.size(); i++ ) 
+  {
+    approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/PolygonBase), true);
+    bases.push_back(approx);
+  }
+  Mat contourDrawing2 = Mat::zeros( detected_edges.size(), CV_8UC1 );
+  for( int i = 0; i< bases.size(); i++ )
+     {
+       Scalar color = Scalar( 255, 255, 255 );
+       drawContours( contourDrawing2, bases, i, color, CV_FILLED, 8, hierarchy, 0, Point(0,0) );
+     }
+  imshow( "mywindow10", contourDrawing2 );  
+  
                 //cvShowImage("mywindow3", orig_small);
                 
                 // preprocessed frame for navigation
@@ -1401,6 +1468,7 @@ int main(int argc, char** argv) {
                 cvDestroyWindow( "mywindow6" );
                 cvDestroyWindow( "mywindow8" );
                 cvDestroyWindow( "mywindow9" );
+                cvDestroyWindow( "mywindow10" );
         }
        /* cvDestroyWindow( "mywindow7" );
         */
