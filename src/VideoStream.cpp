@@ -13,6 +13,7 @@
 
 using namespace cv;
 RNG rng(12345);
+enum BASE_TYPE { BASE_QUEEN, BASE_GREY };
 /*
 const int CAMERA_WIDTH = 181;
 const int CAMERA_HEIGHT = 96;
@@ -23,8 +24,10 @@ const int CAMERA_WIDTH = 140;
 const int CAMERA_HEIGHT = 80;
 const int REAL_WIDTH = 432;
 const int REAL_HEIGHT = 240;
-bool movementEnabled = false;
+bool movementEnabled = true;
 bool windowsEnabled = true;
+bool canReleaseBox = false; 
+BASE_TYPE baseType;
 /*
 int a = 4;
 int b = 5;
@@ -34,7 +37,10 @@ int saved_angle = -1;
 bool correct_box = false;
 int contourMinSize = 150;
 int contourMaxSize = 700;
-int lowThreshold = 50;
+int baseCenterX = 0;
+int baseCenterY = 0;
+int lowThreshold = 68;
+int highThreshold = 110;
 int minRatio = 500;
 int maxRatio = 1500;
 int a = 18;
@@ -42,7 +48,7 @@ int b = 17;
 int c = 28;
 int d = 11;
 int e = 4;
-int PolygonBase = 25;
+int PolygonBase = 15;
 
 int minHue = 0;
 int maxHue = 0;
@@ -182,7 +188,7 @@ void segment_floor(IplImage* src, IplImage* dst, int* odv)
           odv[i] = dst->height - odv[i];
         }
         
-        if (windowsEnabled) cvShowImage( "mywindow3", dst ); 	
+        //if (windowsEnabled) cvShowImage( "mywindow3", dst ); 	
 }
 
 void segment_base(IplImage* src, IplImage* dst/*, int* odv*/)
@@ -249,7 +255,7 @@ void segment_base(IplImage* src, IplImage* dst/*, int* odv*/)
           odv[i] = dst->height - odv[i];
         }
 */        
-        if (windowsEnabled) cvShowImage( "mywindow9", dst ); 	
+        //if (windowsEnabled) cvShowImage( "mywindow9", dst ); 	
 }
 
 
@@ -554,7 +560,7 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
         //}
         
         Mat& drawingScaled = drawing;
-        if (windowsEnabled) imshow("mywindow2", drawingScaled);
+        //if (windowsEnabled) imshow("mywindow2", drawingScaled);
         std::memset(boxVec, 0, sizeof(int)*drawingScaled.cols);
 
         for (int i = 0; i < drawingScaled.rows; i++)
@@ -655,12 +661,32 @@ inline void grabBox(Controller& ctrl)
         std::cout << "-- Grabbing box\n";
         ctrl.openServo();
         ctrl.turn(0); 
-        usleep(1800000);
+        usleep(3000000);
         ctrl.closeServo();
         usleep(1000000);
         ctrl.stop();
         hasBox = true;
 }
+
+inline void dropBox(Controller& ctrl, double angle)
+{
+        std::cout << "-- Dropping box\n";
+        hasBox = false;
+        ctrl.stop();
+        usleep(5000000);
+        ctrl.turn(angle);
+        ctrl.turn(0); 
+        usleep(30000 * (CAMERA_HEIGHT - baseCenterY));
+        ctrl.openServo();
+        ctrl.stop();
+        ctrl.moveBackward();
+        usleep(1000000);
+        ctrl.rotateOnSpot();
+        usleep(500000);
+        ctrl.stop();
+        usleep(5000000);
+}
+
 
 bool lastMoveWasTowardsBox = false;
 void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* normalCapture, IplImage* hdCapture, int* boxVec)
@@ -709,7 +735,11 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         }
 
         // box detection
-        BoxDetectionResult boxDetectionResult = detectBoxes(normalCapture, hdCapture, boxVec);
+        BoxDetectionResult boxDetectionResult;
+        if (!hasBox)
+        {
+                boxDetectionResult = detectBoxes(normalCapture, hdCapture, boxVec);
+        }
         
         // can we grab the box?
         
@@ -719,6 +749,16 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
                 usleep(500000);
                 grabBox(ctrl);
                 return;
+        }
+        
+        if (hasBox && canReleaseBox)
+        {
+                int x_distance = baseCenterX - (normalCapture->width / 2);
+                int y_distance = normalCapture->width - baseCenterY;
+                double tan = (double)y_distance / (double)x_distance;
+		double angle = std::atan(tan);
+		angle = angle * 180 / PI;
+		dropBox(ctrl, angle);
         }
         
         std::pair<size_t, size_t> boxLine = longestLine(boxVec, img->width);
@@ -903,7 +943,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
                         std::cout << "Moving back: camera facing wall\n";
                 }
         }
-        std::cout << "left IR " << leftIR << '/' << IRThreshold << '\n';
+        //std::cout << "left IR " << leftIR << '/' << IRThreshold << '\n';
         if (leftIR > IRThreshold)
         {
                 moveBack = true;
@@ -913,7 +953,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         {
                 moveBack = true;
         }
-        std::cout << "right IR " << rightIR << '/' << IRThreshold << '\n';
+        //std::cout << "right IR " << rightIR << '/' << IRThreshold << '\n';
 
         /*if (Controller::whiskersTouched)
         {
@@ -949,12 +989,12 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         		}
         }
 
-        std::cout << "counter: " << stoppedForPicturesCounter << ", angle: " << movement_angle << '\n';
+        //std::cout << "counter: " << stoppedForPicturesCounter << ", angle: " << movement_angle << '\n';
         if (stoppedForPicturesCounter <= 1 || moveTowardsBox)
         {
         	if ((lastMoveWasTowardsBox) && !moveTowardsBox)
         	{
-        	        std::cout << "last move was towards box, no box found this time, will wait\n";    
+        	        //std::cout << "last move was towards box, no box found this time, will wait\n";    
         	}
         	else
         	{
@@ -964,7 +1004,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         	        
         	if (moveTowardsBox)
         	{
-        	        std::cout << "\nMOVING TOWARDS BOX DIRECTION: " << movement_angle << '\n';
+        	        //std::cout << "\nMOVING TOWARDS BOX DIRECTION: " << movement_angle << '\n';
         	        usleep(100000);
         	        lastMoveWasTowardsBox = true;
         	}       
@@ -989,7 +1029,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         	//
         	//ctrl.stop(); 
         cvLine(normalCapture, cvPoint(boxLine.first, 40), cvPoint(boxLine.second, 40), cvScalar(255, 0, 0));
-        if (windowsEnabled) cvShowImage("window4", normalCapture);
+        //if (windowsEnabled) cvShowImage("window4", normalCapture);
         }        
 }
 
@@ -997,24 +1037,24 @@ void initSift()
 {
         
         image_names.push_back("walle.png");
-        keypoint_match_count.push_back(0);
-        //keypoint_match_count.push_back(13);
-        /*image_names.push_back("ferrari.png");
+        //keypoint_match_count.push_back(0);
+        keypoint_match_count.push_back(11);
+        image_names.push_back("ferrari.png");
         keypoint_match_count.push_back(7);
         image_names.push_back("celebes.png");
-        keypoint_match_count.push_back(13);
+        keypoint_match_count.push_back(11);
         image_names.push_back("fry.png");
         keypoint_match_count.push_back(5);
         image_names.push_back("mario.png");
-        keypoint_match_count.push_back(13);
+        keypoint_match_count.push_back(11);
         image_names.push_back("terminator.png");
-        keypoint_match_count.push_back(13);
+        keypoint_match_count.push_back(11);
         image_names.push_back("iron.png");
-        keypoint_match_count.push_back(13);
+        keypoint_match_count.push_back(11);
         image_names.push_back("starry.png");
-        keypoint_match_count.push_back(13);
+        keypoint_match_count.push_back(11);
         image_names.push_back("thor.png");
-        keypoint_match_count.push_back(13);*/
+        keypoint_match_count.push_back(11);
 
 
         base_image_names.push_back("base1.png");
@@ -1136,7 +1176,7 @@ bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameH
         cv::Mat descriptors_camera;
         extractor.compute(croppedImageGray, keypoints_camera, descriptors_camera);
         
-        if (windowsEnabled) imshow("mywindow5", croppedImageGray);
+        //if (windowsEnabled) imshow("mywindow5", croppedImageGray);
 
         if (keypoints_camera.size() > 10)
         {
@@ -1268,6 +1308,165 @@ void* cameraThread(void* Param)
         
 	pthread_exit(NULL);
 }
+int W1 = 2;
+int W2 = 10;
+int W3 = 0;
+int W4 = 9;
+int W5 = 2;
+IplImage* orig_small = NULL;
+void* baseThread(void* Param)
+{
+	// Retrieve data
+	int id = *((int*)Param);
+	// Perform some action
+	// Count down from 10 using different speed depending on data
+        while (orig_small == NULL) { usleep(1); }
+        while (true)
+        {
+                if (hasBox)
+                {
+                /// Canny detector
+                        std::cout << "whoosh\n";
+                        Mat detected_edges;
+                        Mat orig_small_copy(orig_small, true);
+                        cvtColor( orig_small, detected_edges, CV_BGR2GRAY );
+                        cv::Mat sharpened;
+                        cv::GaussianBlur(detected_edges, sharpened, cv::Size(0, 0), W1);
+                        cv::addWeighted(detected_edges, W2/10.0, sharpened, -W3/10.0, W4, sharpened);
+                        imshow( "mywindow3", detected_edges );  
+
+                                                        
+                        Canny( sharpened, sharpened, lowThreshold, highThreshold, 3, true );
+                        dilate(sharpened, sharpened, getStructuringElement( MORPH_RECT,
+                                                        Size( 3, 3 ),
+                                                        Point( 2, 2) ));
+                        imshow( "mywindow7", sharpened );                                       
+                        Mat dst;
+                        /// Using Canny's output as a mask, we display our result
+                        dst = Scalar::all(0);
+
+                        Mat(orig_small).copyTo( dst, sharpened);
+                        vector<vector<Point> > contours;      
+                        vector<Vec4i> hierarchy;
+                        findContours( sharpened, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+                        vector<Point> approx;
+                        vector<vector<Point> > bases;
+
+                        for( int i = 0; i< contours.size(); i++ ) 
+                        {
+                                approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/PolygonBase), true);
+                                bases.push_back(approx);
+                        }
+
+                        /// Draw contours
+                        Mat contourDrawing = Mat::zeros( detected_edges.size(), CV_8UC1 );
+                        for( int i = 0; i< bases.size(); i++ )
+                        {
+                                Mat m(bases[i]);
+                                double area = contourArea(m);
+                                if(area > 500 && area < 2000)
+                                {
+                                        std::cout << area << "\n";
+                                        Scalar color = Scalar( 255, 255, 255 );
+                                        drawContours( contourDrawing, bases, i, color, CV_FILLED, 8, hierarchy, 0, Point(0,0) );
+                                }
+                        }
+                        
+                        /// Show in a window
+
+                        contours.clear();
+                        hierarchy.clear();
+                        approx.clear();
+                        bases.clear();
+                        findContours( contourDrawing, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+                        for( int i = 0; i< contours.size(); i++ ) 
+                        {
+                                approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/PolygonBase), true);
+                                bases.push_back(approx);
+                        }
+                        Mat contourDrawing2 = Mat::zeros( detected_edges.size(), CV_8UC1 );
+                        
+
+                        for( int i = 0; i< bases.size(); i++ )
+                        {
+                                Scalar color = Scalar( 255, 255, 255 );
+                                drawContours( contourDrawing2, bases, i, color, CV_FILLED, 8, hierarchy, 0, Point(0,0) );
+                                baseCenterX = 0;
+                                baseCenterY = 0;
+                                for (size_t j = 0; j < bases[i].size(); j++)
+                                {
+                                        baseCenterX += bases[i][j].x;
+                                        baseCenterY += bases[i][j].y;
+                                }
+                                baseCenterX /= bases[i].size();
+                                baseCenterY /= bases[i].size();
+                                std::cout << "center: (" << baseCenterX << ", " << baseCenterY << ")\n";
+                                
+                                int c1 = 0;
+                                int c2 = 0;
+                                int c3 = 0;
+                                
+                                for(int i = baseCenterX - 5; i < baseCenterX+5; i++)
+                                {
+                                        for(int j = baseCenterY - 5; j < baseCenterY + 5; j++)
+                                        {
+                                                c1 += orig_small_copy.at<Vec3b>( j , i )[0];
+                                                c2 += orig_small_copy.at<Vec3b>( j , i )[1];
+                                                c3 += orig_small_copy.at<Vec3b>( j , i )[2];     
+                                                orig_small_copy.at<Vec3b>( j , i )[0] = 255;
+                                                orig_small_copy.at<Vec3b>( j , i )[1] = 255;
+                                                orig_small_copy.at<Vec3b>( j , i )[2] = 255;
+                                                //contourDrawing2.at<char>(i,j) = 0;
+                                                //std::cout << i << "," << j << "\n";
+                                                                            
+                                        }
+                             
+                                }
+                                orig_small_copy.at<Vec3b>( 1 , 1 )[0] = 0;
+                                orig_small_copy.at<Vec3b>( 1 , 1 )[1] = 0;
+                                orig_small_copy.at<Vec3b>( 1 , 1 )[2] = 255;
+                                orig_small_copy.at<Vec3b>( 2 , 1 )[0] = 0;
+                                orig_small_copy.at<Vec3b>( 2 , 1 )[1] = 0;
+                                orig_small_copy.at<Vec3b>( 2 , 1 )[2] = 255;
+                                orig_small_copy.at<Vec3b>( 3 , 1 )[0] = 0;
+                                orig_small_copy.at<Vec3b>( 3 , 1 )[1] = 0;
+                                orig_small_copy.at<Vec3b>( 3 , 1 )[2] = 255;
+                                
+                                std::cout << c1 << "," << c2 << "," << c3 << std::endl;
+                                
+                                c1 /= 100;
+                                c2 /= 100;
+                                c3 /= 100;
+                                
+                                std::cout << c1 << "," << c2 << "," << c3 << std::endl;
+                                
+                                if (160 <= c3 && c3 <= 195 &&
+                                    130 <= c2 && c2 <= 165 &&
+                                    100 <= c1 && c1 <= 130)
+                                {
+                                        canReleaseBox = true;                                        
+                                        baseType = BASE_QUEEN;
+                                } 
+                                else if (108 <= c3 && c3 <= 152 &&
+                                         108 <= c2 && c2 <= 152 &&
+                                         108 <= c1 && c1 <= 152)
+                                {
+                                        canReleaseBox = true;                                        
+                                        baseType = BASE_GREY;
+                                } 
+                        }
+                        imshow( "mywindow8", contourDrawing2 );  
+                        imshow( "mywindow10", orig_small_copy );
+               }
+               else
+               {
+                        canReleaseBox = false;
+               }
+           
+        }        
+
+	pthread_exit(NULL);
+}
 
 
 int main(int argc, char** argv) {
@@ -1285,39 +1484,42 @@ int main(int argc, char** argv) {
 	printf("Starting threads...\n");
 	// Create thread object
 	pthread_t thread1;
+	pthread_t thread2;
 	// Create data
 	int id1 = 1;
+	int id2 = 2;
 	// Start thread
 	pthread_create(&thread1, NULL, cameraThread, (void*)&id1);
+	pthread_create(&thread2, NULL, baseThread, (void*)&id2);
 
         if (windowsEnabled) 
         {
                 // Create a window in which the captured images will be presented
-                cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
-                cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
-                //cvNamedWindow( "mywindow3", CV_WINDOW_AUTOSIZE );
-                cvNamedWindow( "mywindow4", CV_WINDOW_AUTOSIZE );
+                //cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
+                //cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
+                cvNamedWindow( "mywindow3", CV_WINDOW_NORMAL );
+                //cvNamedWindow( "mywindow4", CV_WINDOW_AUTOSIZE );
                 //cvNamedWindow( "mywindow5", CV_WINDOW_AUTOSIZE );
-                cvNamedWindow( "mywindow6", CV_WINDOW_AUTOSIZE );
-                //cvNamedWindow( "mywindow7", CV_WINDOW_AUTOSIZE );
-                cvNamedWindow( "mywindow8", CV_WINDOW_AUTOSIZE );
-                cvNamedWindow( "mywindow9", CV_WINDOW_AUTOSIZE );
-                cvNamedWindow( "mywindow10", CV_WINDOW_AUTOSIZE );                
+                cvNamedWindow( "mywindow6", CV_WINDOW_NORMAL );
+                cvNamedWindow( "mywindow7", CV_WINDOW_NORMAL );
+                cvNamedWindow( "mywindow8", CV_WINDOW_NORMAL );
+                //cvNamedWindow( "mywindow9", CV_WINDOW_AUTOSIZE );
+                cvNamedWindow( "mywindow10", CV_WINDOW_NORMAL );                
                 
                 cvMoveWindow("mywindow", 0, 20);
-                cvMoveWindow("mywindow2", 400, 20);
+                //cvMoveWindow("mywindow2", 400, 20);
                 cvMoveWindow("mywindow3", 800, 20);
                 //cvMoveWindow("mywindow3", 0, 320);
-                cvMoveWindow("mywindow4", 400, 320);
+                //cvMoveWindow("mywindow4", 400, 320);
                 cvMoveWindow("mywindow5", 800, 320);
                 cvMoveWindow("mywindow6", 0, 620);
                 cvMoveWindow("mywindow8", 800, 620);
-                cvMoveWindow("mywindow9", 600, 620);
+                //cvMoveWindow("mywindow9", 600, 620);
                 cvMoveWindow("mywindow10", 600, 620);
                 
 
 
-                cvCreateTrackbar( "a", "mywindow2", &a, 40, NULL );
+                /*cvCreateTrackbar( "a", "mywindow2", &a, 40, NULL );
                 cvCreateTrackbar( "b", "mywindow2", &b, 40, NULL );
                 cvCreateTrackbar( "c", "mywindow2", &c, 100, NULL );
                 cvCreateTrackbar( "d", "mywindow4", &d, 40, NULL );
@@ -1331,94 +1533,42 @@ int main(int argc, char** argv) {
                 cvCreateTrackbar( "minSat", "mywindow8", &minSat, 255, NULL );
                 cvCreateTrackbar( "maxSat", "mywindow8", &maxSat, 255, NULL );
                 cvCreateTrackbar( "minVal", "mywindow8", &minVal, 255, NULL );
-                cvCreateTrackbar( "maxVal", "mywindow8", &maxVal, 255, NULL );
-                cvCreateTrackbar( "c", "mywindow10", &lowThreshold, 200, NULL );
+                cvCreateTrackbar( "maxVal", "mywindow8", &maxVal, 255, NULL );*/
+                cvCreateTrackbar( "lowT", "mywindow10", &lowThreshold, 400, NULL );
+                cvCreateTrackbar( "highT", "mywindow10", &highThreshold, 400, NULL );
                 cvCreateTrackbar( "p", "mywindow10", &PolygonBase, 100, NULL );
+                cvCreateTrackbar( "W1", "mywindow3", &W1, 100, NULL );
+                cvCreateTrackbar( "W2", "mywindow3", &W2, 100, NULL );
+                cvCreateTrackbar( "W3", "mywindow3", &W3, 100, NULL );
+                cvCreateTrackbar( "W4", "mywindow3", &W4, 100, NULL );
+                //cvCreateTrackbar( "W5", "mywindow3", &W5, 100, NULL );
         }
         int odv[CAMERA_WIDTH];
         int boxVec[CAMERA_WIDTH];
         
 	while (!origReady) { std::cout << "waiting for camera thread...\n"; };
         while ( 1 ) {
-        
-                
-                
+                std::cout << "has box? " << hasBox << '\n';
                 if(boxDetected){
-                        std::cout<<"BOXDETECTED: " << boxDetected << std::endl;
+                        //::cout<<"BOXDETECTED: " << boxDetected << std::endl;
                         ctrl.stop();
                         usleep(100000);
                 }
                 
                 
-                std::cout << orig->width << 'x' << orig->height << '\n';
+                //std::cout << orig->width << 'x' << orig->height << '\n';
                 /*if (saved_angle != -1)
                 {
                         ctrl.turn(saved_angle);
                         usleep(100000);
                 }*/
-                //cvShowImage("mywindow", orig);
-                IplImage* orig_small = small_size_camera_image(orig);
+                cvShowImage("mywindow", orig);
+                orig_small = small_size_camera_image(orig);
                 
   /// Reduce noise with a kernel 3x3
   //blur( src_gray, detected_edges, Size(3,3) );
 
-  /// Canny detector
-  Mat detected_edges;
-  cvtColor( orig_small, detected_edges, CV_BGR2GRAY );
-  dilate(detected_edges, detected_edges, getStructuringElement( MORPH_RECT,
-                                       Size( 2* 2 + 1, 2* 2 +1 ),
-                                       Point( 2, 2) ));
-  Canny( detected_edges, detected_edges, lowThreshold, lowThreshold*3, 3 );
-  Mat dst;
-  /// Using Canny's output as a mask, we display our result
-  dst = Scalar::all(0);
 
-  Mat(orig_small).copyTo( dst, detected_edges);
-  vector<vector<Point> > contours;      
-  vector<Vec4i> hierarchy;
-  findContours( detected_edges, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-  vector<Point> approx;
-  vector<vector<Point> > bases;
-  
-  for( int i = 0; i< contours.size(); i++ ) 
-  {
-    approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/PolygonBase), true);
-    bases.push_back(approx);
-  }
-  
-  /// Draw contours
-  Mat contourDrawing = Mat::zeros( detected_edges.size(), CV_8UC1 );
-  for( int i = 0; i< bases.size(); i++ )
-     {
-       Mat m(bases[i]);
-       double area = contourArea(m);
-       if(area > 600)
-       {
-                std::cout << area << "\n";
-                Scalar color = Scalar( 255, 255, 255 );
-                drawContours( contourDrawing, bases, i, color, CV_FILLED, 8, hierarchy, 0, Point(0,0) );
-        }
-     }
-
-  /// Show in a window
-
-  contours.clear();
-  hierarchy.clear();
-  approx.clear();
-  bases.clear();
-  findContours( contourDrawing, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-  for( int i = 0; i< contours.size(); i++ ) 
-  {
-    approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true)*(1.0/PolygonBase), true);
-    bases.push_back(approx);
-  }
-  Mat contourDrawing2 = Mat::zeros( detected_edges.size(), CV_8UC1 );
-  for( int i = 0; i< bases.size(); i++ )
-     {
-       Scalar color = Scalar( 255, 255, 255 );
-       drawContours( contourDrawing2, bases, i, color, CV_FILLED, 8, hierarchy, 0, Point(0,0) );
-     }
-  imshow( "mywindow10", contourDrawing2 );  
   
                 //cvShowImage("mywindow3", orig_small);
                 
