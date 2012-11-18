@@ -101,14 +101,6 @@ public:
 
     static void* baseThread(void* Param);
 
-
-
-
-
-
-
-private:
-
     CvCapture* capture;
     BASE_TYPE  baseType;
     IplImage*  orig = NULL;
