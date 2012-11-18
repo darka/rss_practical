@@ -7,7 +7,17 @@ Robot::Robot(Controller& ctrl)
 , boxDetected(0)
 , hasBox(false)
 , ctrl(&ctrl)
+, vision(&vision)
+, running(true)
 {
+}
+
+void Robot::start()
+{
+        while (running)
+        {
+                run();
+        }
 }
 
 void Robot::moveBackConsideringFreeSpace(IplImage* img, int* odv)
