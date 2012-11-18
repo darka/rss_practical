@@ -24,9 +24,9 @@ const int CAMERA_WIDTH = 140;
 const int CAMERA_HEIGHT = 80;
 const int REAL_WIDTH = 432;
 const int REAL_HEIGHT = 240;
-bool movementEnabled = true;
+
 bool windowsEnabled = false;
-bool canReleaseBox = false; 
+
 BASE_TYPE baseType;
 /*
 int a = 4;
@@ -75,10 +75,7 @@ bool detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameH
         
 Controller ctrl;
 CvCapture* capture;
-int stoppedForPicturesCounter = 0;
-int sawBoxCounter = 3;
-bool boxDetected;
-bool hasBox = false;
+
 
 struct BoxModel
 {
@@ -223,69 +220,11 @@ void segment_base(IplImage* src, IplImage* dst/*, int* odv*/)
                         }
                 }
         }
-        
-        //std::memset(odv, 0, sizeof(int));
-/*
-        
-        for (int i = 0; i < dst->height; i++)
-        {
-                for (int k = 0; k < dst->width; k += 1)
-                {
-                        int j = k * dst->nChannels;
-                        unsigned char red = dst->imageData[i * dst->widthStep + j + 2];
-                        unsigned char green = dst->imageData[i * dst->widthStep + j + 1];
-                        unsigned char blue = dst->imageData[i * dst->widthStep + j];
-                        if (red == 255 && green == 255 && blue == 255)
-                        {
-                        
-                        }
-                        else 
-                        { 
-                                if (odv[k] < i)
-                                {
-                                        odv[k] = i;
-                                }  
-                       }
-                      
-                }
-        }
-        
-        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
-        {
-          odv[i] = dst->height - odv[i];
-        }
-*/        
-        //if (windowsEnabled) cvShowImage( "mywindow9", dst ); 	
+
 }
 
 
-void moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
-{
-        std::cout <<"Moving backwards...\n";
-        int leftSpace = 0;
-        for (size_t i = 0; i < img->width / 2; ++i)
-        {
-             leftSpace += odv[i];
-        }
-        int rightSpace = 0;
-        for (size_t i = img->width / 2; i < img->width; ++i)
-        {
-             rightSpace += odv[i];
-        }
-        double leftSpaceAverage = leftSpace / (img->width / 2.0);
-        double rightSpaceAverage = rightSpace / (img->width / 2.0);
-        ctrl.moveBackward();
-        usleep(400000);
-        if (leftSpaceAverage < rightSpaceAverage)
-        {
-                ctrl.moveBackwardRight();
-        }
-        else
-        {
-                ctrl.moveBackwardLeft();
-        }
-        usleep(180000);
-}
+
 
 
 inline void interpolatedCoordinates(int &min_x, int &min_y, int &max_x, int &max_y, int width, int height)
@@ -606,111 +545,8 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
         return ret;
 }
 
-inline std::pair<size_t, size_t> longestLine(int* boxVec, size_t size)
-{
-        size_t beginMax = 0;
-        size_t distanceMax = 0;
-        size_t endMax = 0;
-                
-        size_t begin = 0;
-        size_t distance = 0;
-        size_t end = 0;
-        
-        bool current = false;
-        
-        for (size_t i = 0; i < size; ++i)
-        {
-                if (current && i == size - 1 && boxVec[i])
-                {
-                        end = i;
-                        if (distance > distanceMax)
-                        {
-                                beginMax = begin;
-                                endMax = end;
-                                distanceMax = distance;
-                        }
-                }
-                if (boxVec[i])
-                {
-                        if (current)
-                        {
-                                distance++;
-                                end = i;
-                        }
-                        else
-                        {
-                                distance = 1;
-                                begin = i;
-                                end = begin;
-                                current = true;
-                        }
-                }
-
-                else
-                {
-                        if (current)
-                        {
-                                current = false;
-                                if (distance > distanceMax)
-                                {
-                                        beginMax = begin;
-                                        endMax = end;
-                                        distanceMax = distance;
-                                }
-                        }
-                        
-                }
-        }
-        std::pair<size_t, size_t> ret;
-        ret.first = beginMax;
-        ret.second = endMax;
-        return ret;
-}
 
 
-inline void stopAndRotate(Controller& ctrl)
-{
-        std::cout << "stopping and rotating...\n";
-        ctrl.stop(); 
-        usleep(1000000);
-        ctrl.rotateOnSpot();
-        usleep(1000000);
-}
-
-inline void grabBox(Controller& ctrl)
-{
-        std::cout << "-- Grabbing box\n";
-        usleep(500000);
-        ctrl.openServo();
-        usleep(500000);
-        ctrl.turn(0); 
-        usleep(3000000);
-        ctrl.closeServo();
-        usleep(1000000);
-        ctrl.stop();
-        hasBox = true;
-}
-
-inline void dropBox(Controller& ctrl, double angle)
-{
-        std::cout << "-- Dropping box\n";
-        hasBox = false;
-        ctrl.stop();
-        usleep(5000000);
-        std::cout << "base angle: " << angle << '\n';
-        ctrl.turn(angle);
-        usleep(100000);
-        ctrl.turn(0); 
-        usleep(35000 * (CAMERA_HEIGHT - baseCenterY));
-        ctrl.openServo();
-        ctrl.stop();
-        ctrl.moveBackward();
-        usleep(1000000);
-        ctrl.rotateOnSpot();
-        usleep(500000);
-        ctrl.stop();
-        usleep(5000000);
-}
 
 
 bool lastMoveWasTowardsBox = false;
@@ -1506,10 +1342,10 @@ int main(int argc, char** argv) {
 
         initSift();
         
-        bool moveable[CAMERA_WIDTH];
+        int moveable[CAMERA_WIDTH];
         for (size_t i = 0; i < CAMERA_WIDTH; ++i)
         {
-          moveable[i] = false;
+          moveable[i] = 0;
         }
       
 

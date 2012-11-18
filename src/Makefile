@@ -1,9 +1,9 @@
 CC=g++
 CFLAGS=-O3 -g -pg
 LDFLAGS=-lphidget21 -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d
-SOURCES=Controller.cpp VideoStream.cpp
+SOURCES=Main.cpp Robot.cpp Vision.cpp Controller.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
-EXECUTABLE=VideoStream
+EXECUTABLE=Robot
 
 all: $(SOURCES) $(EXECUTABLE)
 	
