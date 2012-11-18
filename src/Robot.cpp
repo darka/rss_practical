@@ -107,6 +107,7 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         }
 
         // box detection
+        std::cout << "Box detection.\n";
         BoxDetectionResult boxDetectionResult;
         if (!vision->runBaseDetection)
         {

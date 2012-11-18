@@ -37,11 +37,47 @@ Vision::Vision()
         { 
                 std::cout << "waiting for camera thread...\n"; 
         }
+
+        if (windowsEnabled)
+        {
+                cvNamedWindow( "mywindow3", CV_WINDOW_NORMAL );
+                //cvNamedWindow( "mywindow4", CV_WINDOW_AUTOSIZE );
+                //cvNamedWindow( "mywindow5", CV_WINDOW_AUTOSIZE );
+                cvNamedWindow( "mywindow6", CV_WINDOW_NORMAL );
+                cvNamedWindow( "mywindow7", CV_WINDOW_NORMAL );
+                cvNamedWindow( "mywindow8", CV_WINDOW_NORMAL );
+                //cvNamedWindow( "mywindow9", CV_WINDOW_AUTOSIZE );
+                cvNamedWindow( "mywindow10", CV_WINDOW_NORMAL );                
+                
+                cvMoveWindow("mywindow", 0, 20);
+                //cvMoveWindow("mywindow2", 400, 20);
+                cvMoveWindow("mywindow3", 800, 20);
+                //cvMoveWindow("mywindow3", 0, 320);
+                //cvMoveWindow("mywindow4", 400, 320);
+                cvMoveWindow("mywindow5", 800, 320);
+                cvMoveWindow("mywindow6", 0, 620);
+                cvMoveWindow("mywindow8", 800, 620);
+                //cvMoveWindow("mywindow9", 600, 620);
+                cvMoveWindow("mywindow10", 600, 620);
+        }
+
 }
 
 Vision::~Vision()
 {
         cvReleaseCapture( &capture );
+        if (windowsEnabled) 
+        {
+                cvDestroyWindow( "mywindow" );
+                cvDestroyWindow( "mywindow2" );
+                cvDestroyWindow( "mywindow3" );
+                cvDestroyWindow( "mywindow4" );
+                cvDestroyWindow( "mywindow5" );
+                cvDestroyWindow( "mywindow6" );
+                cvDestroyWindow( "mywindow8" );
+                cvDestroyWindow( "mywindow9" );
+                cvDestroyWindow( "mywindow10" );
+        }
 }
 
 void Vision::update()
@@ -484,22 +520,22 @@ void Vision::initSift()
         image_names.push_back("walle.png");
         //keypoint_match_count.push_back(0);
         keypoint_match_count.push_back(11);
-        image_names.push_back("ferrari.png");
-        keypoint_match_count.push_back(7);
-        image_names.push_back("celebes.png");
-        keypoint_match_count.push_back(11);
-        image_names.push_back("fry.png");
-        keypoint_match_count.push_back(5);
-        image_names.push_back("mario.png");
-        keypoint_match_count.push_back(11);
-        image_names.push_back("terminator.png");
-        keypoint_match_count.push_back(11);
-        image_names.push_back("iron.png");
-        keypoint_match_count.push_back(11);
-        image_names.push_back("starry.png");
-        keypoint_match_count.push_back(11);
-        image_names.push_back("thor.png");
-        keypoint_match_count.push_back(11);
+//        image_names.push_back("ferrari.png");
+//        keypoint_match_count.push_back(7);
+//        image_names.push_back("celebes.png");
+//        keypoint_match_count.push_back(11);
+//        image_names.push_back("fry.png");
+//        keypoint_match_count.push_back(5);
+//        image_names.push_back("mario.png");
+//        keypoint_match_count.push_back(11);
+//        image_names.push_back("terminator.png");
+//        keypoint_match_count.push_back(11);
+//        image_names.push_back("iron.png");
+//        keypoint_match_count.push_back(11);
+//        image_names.push_back("starry.png");
+//        keypoint_match_count.push_back(11);
+//        image_names.push_back("thor.png");
+//        keypoint_match_count.push_back(11);
 
 
         base_image_names.push_back("base1.png");
@@ -702,7 +738,7 @@ void* Vision::cameraThread(void* Param)
     int id = *((int*)Param);
     // Perform some action
     // Count down from 10 using different speed depending on data
-        capture = cvCaptureFromCAM( 0 );
+        capture = cvCaptureFromCAM( CV_CAP_ANY );
 
         if ( !capture ) {
                 std::cerr << "ERROR: capture is NULL \n";
@@ -713,9 +749,11 @@ void* Vision::cameraThread(void* Param)
         while (true)
         {
                 orig = grabFrame();
-                origReady = true;
+                if (orig == NULL)
+                        std::cout << "Camera frame empty\n";
                 orig_small = small_size_camera_image(orig);
-                //if (windowsEnabled) imshow("mywindow8", orig);
+                origReady = true;
+                if (windowsEnabled) imshow("mywindow8", orig);
         }
 
     pthread_exit(NULL);
