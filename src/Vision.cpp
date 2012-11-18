@@ -714,6 +714,7 @@ void* Vision::cameraThread(void* Param)
         {
                 orig = grabFrame();
                 origReady = true;
+                orig_small = small_size_camera_image(orig);
                 //if (windowsEnabled) imshow("mywindow8", orig);
         }
 
