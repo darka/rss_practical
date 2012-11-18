@@ -19,7 +19,7 @@ Vision::Vision()
 {
         initSift();
 
-	printf("Starting threads...\n");
+	//printf("Starting threads...\n");
         
 	// Create thread object
 	pthread_t thread1;
@@ -51,7 +51,7 @@ void Vision::update()
         cvDilate(prepared, prepared, NULL, 5);
                          
         if ( !prepared ) {
-        	std::cerr << "ERROR: capture is NULL \n";
+        	std::cerr << "ERROR: prepared is NULL \n";
                 return;
         }
         
@@ -702,7 +702,7 @@ void* Vision::cameraThread(void* Param)
     int id = *((int*)Param);
     // Perform some action
     // Count down from 10 using different speed depending on data
-        capture = cvCaptureFromCAM( CV_CAP_ANY );
+        capture = cvCaptureFromCAM( 0 );
 
         if ( !capture ) {
                 std::cerr << "ERROR: capture is NULL \n";
@@ -736,7 +736,7 @@ void* Vision::baseThread(void* Param)
                         std::cout << "whoosh\n";
                         Mat detected_edges;
                         Mat orig_small_copy(orig_small, true);
-                        cvtColor( orig_small, detected_edges, CV_BGR2GRAY );
+                        cvtColor( orig_small_copy, detected_edges, CV_BGR2GRAY );
                         cv::Mat sharpened;
                         cv::GaussianBlur(detected_edges, sharpened, cv::Size(0, 0), W1);
                         cv::addWeighted(detected_edges, W2/10.0, sharpened, -W3/10.0, W4, sharpened);

@@ -1,4 +1,5 @@
 #include "Robot.hpp"
+#include <algorithm>
 
 Robot::Robot(Controller& ctrl, Vision& vision)
 : ctrl(&ctrl)
@@ -155,7 +156,7 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
                         std::cout << "Will move towards box.\n";
                         for (size_t i = boxLine.first; i < boxLine.second; ++i)
                         {
-                                minBoxDistance = min(minBoxDistance, vision->boxVec[i]);
+                                minBoxDistance = std::min(minBoxDistance, vision->boxVec[i]);
                         }
 
                 }
