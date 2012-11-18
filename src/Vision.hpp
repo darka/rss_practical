@@ -18,7 +18,6 @@ enum BASE_TYPE { BASE_QUEEN, BASE_GREY };
 struct BoxDetectionResult
 {
         BoxDetectionResult() : detected(false), too_far(false), centered(false) {}
-        ~BoxDetectionResult();
         bool detected;
         bool too_far;
         bool centered;
@@ -28,8 +27,8 @@ struct BoxModel
 {
         BoxModel() : area(0), width(0) {}
         std::pair<int, int> position;
-        int width;
         int area;
+        int width;
 };
 
 
@@ -39,24 +38,17 @@ class Vision{
 public:
     Vision();
     ~Vision();
+    void update();
+    void cleanupAfterUpdate();
 
     inline static bool inRange( unsigned char red,
                                 unsigned char green,
                                 unsigned char blue,
                                 int           range );
 
-    inline static bool inRangeHsv( unsigned char hue,
-                                   unsigned char sat,
-                                   unsigned char val,
-                                   int           range );
-
-
     void static segment_floor( IplImage* src,
                                IplImage* dst,
                                int*      odv );
-
-    void static segment_base( IplImage*  src,
-                              IplImage*  dst );
 
     inline void static interpolatedCoordinates( int &min_x,
                                                 int &min_y,
@@ -71,11 +63,9 @@ public:
                                       int box_center_x,
                                       int box_center_y );
 
-    BoxDetectionResult detectBoxes( IplImage* frame,
-                                    IplImage* frameHD,
-                                    int*      boxVec );
+    BoxDetectionResult detectBoxes();
 
-    void static initSift();
+    void initSift();
 
     bool detectFeatures( int        min_x,
                          int        min_y,
@@ -101,40 +91,48 @@ public:
 
     static void* baseThread(void* Param);
 
-    CvCapture* capture;
-    BASE_TYPE  baseType;
-    IplImage*  orig = NULL;
-    IplImage*  orig_small = NULL;
-    IplImage* detected_floor;
-    bool origReady = false;
+    void static enableBaseDetection() { runBaseDetection = true; }
+    bool static baseDetectionEnabled() { return runBaseDetection; }
+    void static disableBaseDetection() { runBaseDetection = false; }
+
+    bool static canReleaseBox() { return releaseBox; }
+
+    static CvCapture* capture;
+    static BASE_TYPE  baseType;
+    static IplImage* orig;
+    static IplImage* orig_small;
+    static IplImage* detected_floor;
+    static bool origReady;
     BoxModel boxModel;
 
-    const int CAMERA_WIDTH = 140;
-    const int CAMERA_HEIGHT = 80;
-    const int REAL_WIDTH = 432;
-    const int REAL_HEIGHT = 240;
+    static const int CAMERA_WIDTH = 140;
+    static const int CAMERA_HEIGHT = 80;
+    static const int REAL_WIDTH = 432;
+    static const int REAL_HEIGHT = 240;
 
-    int  saved_angle = -1;
-    bool correct_box = false;
-    int  contourMinSize = 150;
-    int  contourMaxSize = 700;
-    int  baseCenterX = 0;
-    int  baseCenterY = 0;
-    int  lowThreshold = 68;
-    int  highThreshold = 110;
-    int  minRatio = 500;
-    int  maxRatio = 1500;
-    int  a = 18;
-    int  b = 17;
-    int  c = 28;
-    int  d = 11;
-    int  e = 4;
-    int  PolygonBase = 15;
-    int  W1 = 2;
-    int  W2 = 10;
-    int  W3 = 0;
-    int  W4 = 9;
-    int  W5 = 2;
+    int  saved_angle;
+    bool correct_box;
+    static int  baseCenterX;
+    static int  baseCenterY;
+    static bool runBaseDetection;
+    static bool releaseBox;
+    static const int  contourMinSize = 150;
+    static const int  contourMaxSize = 700;
+    static const int  lowThreshold = 68;
+    static const int  highThreshold = 110;
+    static const int  minRatio = 500;
+    static const int  maxRatio = 1500;
+    static const int  a = 18;
+    static const int  b = 17;
+    static const int  c = 28;
+    static const int  d = 11;
+    static const int  e = 4;
+    static const int  PolygonBase = 15;
+    static const int  W1 = 2;
+    static const int  W2 = 10;
+    static const int  W3 = 0;
+    static const int  W4 = 9;
+    static const int  W5 = 2;
 
     std::vector< std::vector<cv::KeyPoint>* >   sift_keypoints;
     std::vector< int >                          keypoint_match_count;
@@ -146,6 +144,10 @@ public:
     std::vector< std::vector<cv::KeyPoint>* >   base_sift_keypoints;
     std::vector< cv::Mat >                      base_sift_descriptors;
 
+    int odv[Vision::CAMERA_WIDTH];
+    int boxVec[Vision::CAMERA_WIDTH];
+
+    static const bool windowsEnabled = true;
 };
 
 #endif // VISION_HPP

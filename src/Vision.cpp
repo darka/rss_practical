@@ -1,6 +1,21 @@
 #include "Vision.hpp"
 
+using namespace cv;
+
+CvCapture* Vision::capture = NULL;
+BASE_TYPE Vision::baseType = BASE_QUEEN;
+IplImage* Vision::orig = NULL;
+IplImage* Vision::orig_small = NULL;
+IplImage* Vision::detected_floor = NULL;
+bool Vision::origReady = false;
+bool Vision::runBaseDetection = false;
+bool Vision::releaseBox = false;
+int Vision::baseCenterX = 0;
+int Vision::baseCenterY = 0;
+
 Vision::Vision()
+: saved_angle(-1)
+, correct_box(false)
 {
         initSift();
 
@@ -37,7 +52,7 @@ void Vision::update()
                          
         if ( !prepared ) {
         	std::cerr << "ERROR: capture is NULL \n";
-            break;
+                return;
         }
         
         for (size_t i = 0; i < CAMERA_WIDTH; ++i)
@@ -49,44 +64,15 @@ void Vision::update()
           
         // Segment floor from image and write obstacle distances to odv vector
         segment_floor(prepared, detected_floor, odv);
+        cvReleaseImage(&prepared);
 }
 
 void Vision::cleanupAfterUpdate()
 {
-        cvReleaseImage(&prepared);
         cvReleaseImage(&detected_floor);
 }
 
-inline static bool Vision::inRangeHsv(unsigned char hue,
-                                      unsigned char sat,
-                                      unsigned char val,
-                                      int           range)
-{
-    // CALCULATES IF HSV VALUE OF PIXEL IS IN SPECIFIED RANGE
-    //
-    // INPUT:   HSV-VALUE OF PIXEL AND RANGE
-    // OUTPUT:  TRUE OR FALSE
-
-    const char diffRange = 14;
-    const char blackness = 70;
-
-    if ( maxHue >= hue &&
-         hue >= minHue &&
-         maxSat >= sat &&
-         sat >= minSat &&
-         maxVal >= val &&
-         val >= minVal )
-    {
-            return true;
-    }
-
-    return false;
-
-
-
-}
-
-inline static bool Vision::inRange(unsigned char red,
+bool Vision::inRange(unsigned char red,
                                    unsigned char green,
                                    unsigned char blue,
                                    int           range)
@@ -108,7 +94,7 @@ inline static bool Vision::inRange(unsigned char red,
 }
 
 
-inline void static Vision::interpolatedCoordinates( int &min_x,
+inline void Vision::interpolatedCoordinates( int &min_x,
                                                     int &min_y,
                                                     int &max_x,
                                                     int &max_y,
@@ -124,7 +110,7 @@ inline void static Vision::interpolatedCoordinates( int &min_x,
 }
 
 
-inline static bool Vision::boxIsCentered( int image_center_x,
+inline bool Vision::boxIsCentered( int image_center_x,
                                           int image_center_y,
                                           int box_center_x,
                                           int box_center_y )
@@ -152,7 +138,7 @@ inline static bool Vision::boxIsCentered( int image_center_x,
 
 
 
-static void Vision::segment_floor(IplImage* src, IplImage* dst, int* odv)
+void Vision::segment_floor(IplImage* src, IplImage* dst, int* odv)
 {
         const int floor_range = 13;
 
@@ -219,42 +205,11 @@ static void Vision::segment_floor(IplImage* src, IplImage* dst, int* odv)
         //if (windowsEnabled) cvShowImage( "mywindow3", dst );
 }
 
-static void Vision::segment_base(IplImage* src, IplImage* dst/*, int* odv*/)
+
+BoxDetectionResult Vision::detectBoxes()
 {
-        const int floor_range = 13;
-         cvDilate(src, src, NULL, 1);
-        for (int i = 0; i < src->height; i++)
-        {
-                for (int k = 0; k < src->width; k += 1)
-                {
-                        int j = k * dst->nChannels;
-                        unsigned char red = src->imageData[i * src->widthStep + j + 2];
-                        unsigned char green = src->imageData[i * src->widthStep + j + 1];
-                        unsigned char blue = src->imageData[i * src->widthStep + j];
-
-                        if (!inRangeHsv(red, green, blue, floor_range))
-                        {
-
-                                const unsigned char value = 0;
-
-                                ((uchar *)(dst->imageData + i * dst->widthStep))[j] = blue;
-                                ((uchar *)(dst->imageData + i * dst->widthStep))[j+1] = green;
-                                ((uchar *)(dst->imageData + i * dst->widthStep))[j+2] = red;
-                        }
-                        else
-                        {
-                                const unsigned char value = 255;
-
-                                ((uchar *)(dst->imageData + i * dst->widthStep))[j] = value;
-                                ((uchar *)(dst->imageData + i * dst->widthStep))[j+1] = value;
-                                ((uchar *)(dst->imageData + i * dst->widthStep))[j+2] = value;
-                        }
-                }
-        }
-}
-
-static BoxDetectionResult Vision::detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
-{
+        IplImage* frame = orig_small;
+        IplImage* frameHD = orig;
         const int BoxROIError = 65;
         //CvRect rect = cvRect(boxModel.position.first - boxModel.width / 2 - BoxROIError, 0, boxModel.width + BoxROIError, frame->height);
         //cvSetImageROI(frame, rect);
@@ -433,14 +388,6 @@ static BoxDetectionResult Vision::detectBoxes(IplImage* frame, IplImage* frameHD
                                 boxModel.position = std::make_pair(center_x, center_y);
                         }
 
-
-                        if (stoppedForPicturesCounter == 0)
-                                stoppedForPicturesCounter = 5;
-
-
-
-
-
                         //std::cout << "center: " << center_x << ", " << center_y << '\n';
                         const int centerThreshold = 13;
                         for (std::vector< std::pair<int, int> >::iterator i = centers.begin();
@@ -463,10 +410,6 @@ static BoxDetectionResult Vision::detectBoxes(IplImage* frame, IplImage* frameHD
                         //ctrl.stop();
 
                         ret.detected = true;
-                        boxDetected = ret.detected;
-
-
-
                         //if (ret.detected)
                         //{
                                 std::cout << "**** box detected with area: " << area << '\n';
@@ -535,7 +478,7 @@ static BoxDetectionResult Vision::detectBoxes(IplImage* frame, IplImage* frameHD
 
 
 
-static void Vision::initSift()
+void Vision::initSift()
 {
 
         image_names.push_back("walle.png");
@@ -579,7 +522,7 @@ static void Vision::initSift()
         }
 }
 
-static bool Vision::detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameHD)
+bool Vision::detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameHD)
 {
         bool ret = false;
         // Add results to image and save.
@@ -687,7 +630,6 @@ static bool Vision::detectFeatures(int min_x, int min_y, int max_x, int max_y, I
                                 ss << matchedImageCounter;
                                 ss << ".png";
                                 cv::imwrite(ss.str().c_str(), outputCam);*/
-                                matchedImageCounter++;
                                 break;
                         }
                 }
@@ -699,7 +641,7 @@ static bool Vision::detectFeatures(int min_x, int min_y, int max_x, int max_y, I
 
 }
 
-inline static bool Vision::checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
+inline bool Vision::checkForMatch(size_t point_i, std::vector<cv::KeyPoint>& other_points, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
 {
     double dsq, distsq1 = 100000000, distsq2 = 100000000;
 
@@ -728,7 +670,7 @@ inline static bool Vision::checkForMatch(size_t point_i, std::vector<cv::KeyPoin
 }
 
 
-inline static double Vision::distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
+inline double Vision::distSquared(size_t point_a, size_t point_b, cv::Mat& descriptors_image, cv::Mat& descriptors_camera)
 {
     int i = 0;
     double distsq = 0.0;
@@ -741,20 +683,20 @@ inline static double Vision::distSquared(size_t point_a, size_t point_b, cv::Mat
     return distsq;
 }
 
-inline static Vision::IplImage* small_size_camera_image(IplImage* orig)
+inline IplImage* Vision::small_size_camera_image(IplImage* orig)
 {
         IplImage*  orig_small = cvCreateImage( cvSize(CAMERA_WIDTH, CAMERA_HEIGHT), orig->depth, orig->nChannels);
         cvResize(orig, orig_small);
         return orig_small;
 }
 
-inline static Vision::IplImage* grabFrame()
+inline IplImage* Vision::grabFrame()
 {
         cvGrabFrame(capture);
         return cvRetrieveFrame( capture );
 }
 
-static void* Vision::cameraThread(void* Param)
+void* Vision::cameraThread(void* Param)
 {
     // Retrieve data
     int id = *((int*)Param);
@@ -779,7 +721,7 @@ static void* Vision::cameraThread(void* Param)
 }
 
 
-static void* Vision::baseThread(void* Param)
+void* Vision::baseThread(void* Param)
 {
     // Retrieve data
     int id = *((int*)Param);
@@ -788,7 +730,7 @@ static void* Vision::baseThread(void* Param)
         while (orig_small == NULL) { usleep(1); }
         while (true)
         {
-                if (hasBox)
+                if (runBaseDetection)
                 {
                 /// Canny detector
                         std::cout << "whoosh\n";
@@ -909,7 +851,7 @@ static void* Vision::baseThread(void* Param)
                                     130 <= c2 && c2 <= 165 &&
                                     100 <= c1 && c1 <= 130)
                                 {
-                                        canReleaseBox = true;
+                                        releaseBox = true;
                                         baseType = BASE_QUEEN;
                                 }
                                 /*else if (108 <= c3 && c3 <= 152 &&
@@ -925,7 +867,7 @@ static void* Vision::baseThread(void* Param)
                }
                else
                {
-                        canReleaseBox = false;
+                        releaseBox = false;
                }
 
         }

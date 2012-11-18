@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-O3 -g -pg
+CFLAGS=-O3 -g -pg 
 LDFLAGS=-lphidget21 -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d
 SOURCES=Main.cpp Robot.cpp Vision.cpp Controller.cpp
 OBJECTS=$(SOURCES:.cpp=.o)

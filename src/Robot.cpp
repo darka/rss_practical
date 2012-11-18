@@ -1,35 +1,32 @@
 #include "Robot.hpp"
 
 Robot::Robot(Controller& ctrl, Vision& vision)
-: canReleaseBox(false) 
-, stoppedForPicturesCounter(0)
-, sawBoxCounter(0)
-, boxDetected(0)
-, hasBox(false)
-, ctrl(&ctrl)
+: ctrl(&ctrl)
 , vision(&vision)
+, lastMoveWasTowardsBox(false)
+, sawBoxCounter(3)
 , running(true)
 {
         while (running)
         {
-                vision->update();
-                run(vision->detected_floor, vision->orig_small, vision->orig);
-                vision->cleanupAfterUpdate();
+                this->vision->update();
+                run(this->vision->detected_floor, this->vision->orig_small, this->vision->orig);
+                this->vision->cleanupAfterUpdate();
         }
 }
 
-void Robot::moveBackConsideringFreeSpace(IplImage* detected_floor, int* odv)
+void Robot::moveBackConsideringFreeSpace(IplImage* detected_floor)
 {
         std::cout <<"Moving backwards...\n";
         int leftSpace = 0;
         for (size_t i = 0; i < detected_floor->width / 2; ++i)
         {
-             leftSpace += odv[i];
+             leftSpace += vision->odv[i];
         }
         int rightSpace = 0;
         for (size_t i = detected_floor->width / 2; i < detected_floor->width; ++i)
         {
-             rightSpace += odv[i];
+             rightSpace += vision->odv[i];
         }
         double leftSpaceAverage = leftSpace / (detected_floor->width / 2.0);
         double rightSpaceAverage = rightSpace / (detected_floor->width / 2.0);
@@ -66,7 +63,7 @@ inline void Robot::grabBox()
         ctrl->closeServo();
         usleep(1000000);
         ctrl->stop();
-        hasBox = true;
+        vision->enableBaseDetection();
 }
 
 
@@ -74,14 +71,14 @@ inline void Robot::grabBox()
 inline void Robot::dropBox(double angle)
 {
         std::cout << "-- Dropping box\n";
-        hasBox = false;
+        vision->disableBaseDetection();
         ctrl->stop();
         usleep(5000000);
         std::cout << "base angle: " << angle << '\n';
         ctrl->turn(angle);
         usleep(100000);
         ctrl->turn(0); 
-        usleep(35000 * (CAMERA_HEIGHT - baseCenterY));
+        usleep(35000 * (Vision::CAMERA_HEIGHT - vision->baseCenterY));
         ctrl->openServo();
         ctrl->stop();
         ctrl->moveBackward();
@@ -98,7 +95,7 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         // write the moveable vector
         for (size_t i = 0; i < detected_floor->width; ++i)
         {
-                if (odv[i] <= freeSpaceThreshold)
+                if (vision->odv[i] <= freeSpaceThreshold)
                 {
                         moveable[i] = 0;
                 }
@@ -110,43 +107,43 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
 
         // box detection
         BoxDetectionResult boxDetectionResult;
-        if (!hasBox)
+        if (!vision->runBaseDetection)
         {
-                boxDetectionResult = detectBoxes(normalCapture, hdCapture, boxVec);
+                boxDetectionResult = vision->detectBoxes();
         }
         
         // can we grab the box?
         
         if (movementEnabled && 
-            !hasBox && 
+            !vision->baseDetectionEnabled() && 
             boxDetectionResult.detected && 
             !boxDetectionResult.too_far && 
             boxDetectionResult.centered && 
-            correct_box)
+            vision->correct_box)
         {
                 ctrl->stop();
                 usleep(500000);
-                grabBox(ctrl);
+                grabBox();
                 return;
         }
         
-        if (movementEnabled && hasBox && canReleaseBox)
+        if (movementEnabled && vision->baseDetectionEnabled() && vision->canReleaseBox())
         {
-                int x_distance = baseCenterX - (normalCapture->width / 2);
-                int y_distance = normalCapture->width - baseCenterY;
+                int x_distance = vision->baseCenterX - (normalCapture->width / 2);
+                int y_distance = normalCapture->width - vision->baseCenterY;
                 double tan = (double)y_distance / (double)x_distance;
 		double angle = std::atan(tan);
 		angle = angle * 180 / PI;
-		dropBox(ctrl, angle);
+		dropBox(angle);
         }
         
-        std::pair<size_t, size_t> boxLine = longestLine(boxVec, detected_floor->width);
+        std::pair<size_t, size_t> boxLine = longestLine(vision->boxVec, detected_floor->width);
               
         
         // determine if should move towards box        
         bool moveTowardsBox = false;
         int minBoxDistance = detected_floor->height;
-        if (!hasBox && boxDetectionResult.detected) // only move towards box if it is too far
+        if (!vision->baseDetectionEnabled() && boxDetectionResult.detected) // only move towards box if it is too far
         {
                 if (boxLine.second - boxLine.first == 0) 
                 {
@@ -158,7 +155,7 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
                         std::cout << "Will move towards box.\n";
                         for (size_t i = boxLine.first; i < boxLine.second; ++i)
                         {
-                                minBoxDistance = min(minBoxDistance, boxVec[i]);
+                                minBoxDistance = min(minBoxDistance, vision->boxVec[i]);
                         }
 
                 }
@@ -187,8 +184,8 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
                 lowestY = detected_floor->height;
                 for (size_t i = beginMax; i <= endMax; ++i)
                 {
-                        if (odv[i] < lowestY)
-                                lowestY = odv[i];
+                        if (vision->odv[i] < lowestY)
+                                lowestY = vision->odv[i];
                 }
                 goal_dist = (beginMax + endMax) / 2;
         
@@ -242,7 +239,7 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         if (moveBack)
         {
                 if (movementEnabled) 
-                        moveBackConsideringFreeSpace(detected_floor, odv, ctrl);
+                        moveBackConsideringFreeSpace(detected_floor);
                 return;
         }
         
@@ -259,13 +256,13 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         }
 
         //std::cout << "counter: " << stoppedForPicturesCounter << ", angle: " << movement_angle << '\n';
-        if (stoppedForPicturesCounter <= 1 || moveTowardsBox || hasBox)
+        if (moveTowardsBox || vision->baseDetectionEnabled())
         {
         	if (!lastMoveWasTowardsBox || moveTowardsBox)
         	{
         	        if (movementEnabled) 
         	        {
-                	        if (hasBox) 
+                	        if (vision->baseDetectionEnabled()) 
                 	        {
                 	                ctrl->turn(movement_angle);
                 	        }
@@ -289,7 +286,7 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         }        
 }
 
-static std::pair<size_t, size_t> Robot::longestLine(int* vec, size_t size)
+std::pair<size_t, size_t> Robot::longestLine(int* vec, size_t size)
 {
         size_t beginMax = 0;
         size_t distanceMax = 0;
