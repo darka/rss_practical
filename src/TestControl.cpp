@@ -14,21 +14,11 @@
 int main(int argc, char** argv) {
         Controller ctrl;
         usleep(2000000);
-        ctrl.openServo();
         ctrl.turn(0); 
-        usleep(1800000);
-        ctrl.closeServo();
         usleep(1000000);
-        ctrl.stop();
-        usleep(5000000);
-        ctrl.turn(0); 
-        usleep(40000 * (40));
-        ctrl.openServo();
-        ctrl.stop();
-        ctrl.moveBackward();
+        ctrl.turn(45); 
         usleep(1000000);
-        ctrl.rotateOnSpot();
-        usleep(500000);
+        ctrl.turn(-45);
+        usleep(1000000); 
         ctrl.stop();
-        usleep(5000000);
 }

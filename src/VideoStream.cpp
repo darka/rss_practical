@@ -25,7 +25,7 @@ const int CAMERA_HEIGHT = 80;
 const int REAL_WIDTH = 432;
 const int REAL_HEIGHT = 240;
 bool movementEnabled = true;
-bool windowsEnabled = true;
+bool windowsEnabled = false;
 bool canReleaseBox = false; 
 BASE_TYPE baseType;
 /*
@@ -284,7 +284,7 @@ void moveBackConsideringFreeSpace(IplImage* img, int* odv, Controller& ctrl)
         {
                 ctrl.moveBackwardLeft();
         }
-        usleep(300000);
+        usleep(180000);
 }
 
 
@@ -308,6 +308,23 @@ struct BoxDetectionResult
         bool too_far;
         bool centered;
 };
+
+
+inline bool boxIsCentered(int image_center_x, int image_center_y, int box_center_x, int box_center_y)
+{
+        double center_error; 
+        if (REAL_HEIGHT - box_center_y <= 2)
+        {
+                center_error = 2;
+        }      
+        else
+        {
+                center_error  = REAL_HEIGHT - box_center_y;
+        }  
+        center_error = center_error / 40.0;
+        center_error = REAL_HEIGHT / center_error;
+        return ((image_center_x - center_error) <= box_center_x && box_center_x <= (image_center_x + center_error));
+}
 
 BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
 {
@@ -517,16 +534,16 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                         
                         interpolatedCoordinates(min_x, min_y, max_x, max_y, drawing.cols, drawing.rows);
                         //ctrl.stop();
-                        correct_box = detectFeatures(min_x, min_y, max_x, max_y, frameHD);
+                        
                         ret.detected = true;
                         boxDetected = ret.detected;
 
                         
-                        const int center_error = 100;
-                        if (ret.detected)
-                        {
+                        
+                        //if (ret.detected)
+                        //{
                                 std::cout << "**** box detected with area: " << area << '\n';
-                                ret.too_far = (area < 350);
+                                ret.too_far = (area < 250);
                                 if (ret.too_far)
                                 {
                                         std::cout << "**** Box is too far to approach.\n";
@@ -538,9 +555,8 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                                 int image_center_y = REAL_HEIGHT / 2;
                                 //std::cout << "**** box at " << box_center_x << ", " << box_center_y << "; image center at " << image_center_x << ", " << image_center_y << "\n";
 
-                                ret.centered = ((image_center_x - center_error) <= box_center_x && box_center_x <= (image_center_x + center_error));
                                 std::cout << "box at: " << box_center_x << ", center at: " << (REAL_WIDTH / 2) << '\n';
-                                                                                
+                                ret.centered = boxIsCentered(image_center_x, image_center_y, box_center_x, box_center_y);
                                 /*
                                 ret.centered = ((image_center_x - center_error) < box_center_x && box_center_x < (image_center_x + center_error)) &&
                                                 ((image_center_y - center_error) < box_center_y && box_center_y < (image_center_y + center_error));
@@ -552,8 +568,13 @@ BoxDetectionResult detectBoxes(IplImage* frame, IplImage* frameHD, int* boxVec)
                                 if (ret.centered && !ret.too_far)
                                 {
                                         std::cout << "**** Box can be approached.\n";
+                                        correct_box = detectFeatures(min_x, min_y, max_x, max_y, frameHD);
+                                        if (correct_box)
+                                                std::cout << "**** approaching\n";
+                                        else
+                                                std::cout << "**** but not enough keypoints\n";        
                                 }
-                        }
+                        //}
                 
                 }
         }
@@ -659,7 +680,9 @@ inline void stopAndRotate(Controller& ctrl)
 inline void grabBox(Controller& ctrl)
 {
         std::cout << "-- Grabbing box\n";
+        usleep(500000);
         ctrl.openServo();
+        usleep(500000);
         ctrl.turn(0); 
         usleep(3000000);
         ctrl.closeServo();
@@ -674,9 +697,11 @@ inline void dropBox(Controller& ctrl, double angle)
         hasBox = false;
         ctrl.stop();
         usleep(5000000);
+        std::cout << "base angle: " << angle << '\n';
         ctrl.turn(angle);
+        usleep(100000);
         ctrl.turn(0); 
-        usleep(30000 * (CAMERA_HEIGHT - baseCenterY));
+        usleep(35000 * (CAMERA_HEIGHT - baseCenterY));
         ctrl.openServo();
         ctrl.stop();
         ctrl.moveBackward();
@@ -719,7 +744,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         }        
 */
         const int freeSpaceThreshold = 20; 
-        const int IRThreshold = 210;
+        const int IRThreshold = 300;
       
         // write the moveable vector
         for (size_t i = 0; i < img->width; ++i)
@@ -751,7 +776,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
                 return;
         }
         
-        if (hasBox && canReleaseBox)
+        if (movementEnabled && hasBox && canReleaseBox)
         {
                 int x_distance = baseCenterX - (normalCapture->width / 2);
                 int y_distance = normalCapture->width - baseCenterY;
@@ -990,7 +1015,7 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         }
 
         //std::cout << "counter: " << stoppedForPicturesCounter << ", angle: " << movement_angle << '\n';
-        if (stoppedForPicturesCounter <= 1 || moveTowardsBox)
+        if (stoppedForPicturesCounter <= 1 || moveTowardsBox || hasBox)
         {
         	if ((lastMoveWasTowardsBox) && !moveTowardsBox)
         	{
@@ -998,7 +1023,15 @@ void run(bool* moveable, int* odv, IplImage* img, Controller& ctrl, IplImage* no
         	}
         	else
         	{
-        	        if (movementEnabled) ctrl.turnAt(movement_angle);
+        	        if (movementEnabled) 
+        	        if (hasBox) 
+        	        {
+        	                ctrl.turn(movement_angle);
+        	        }
+        	        else
+        	        {
+        	                ctrl.turnAt(movement_angle);
+        	        }
         	        //saved_angle = -movement_angle;
         	}
         	        
@@ -1333,14 +1366,14 @@ void* baseThread(void* Param)
                         cv::Mat sharpened;
                         cv::GaussianBlur(detected_edges, sharpened, cv::Size(0, 0), W1);
                         cv::addWeighted(detected_edges, W2/10.0, sharpened, -W3/10.0, W4, sharpened);
-                        imshow( "mywindow3", detected_edges );  
+                        if (windowsEnabled) imshow( "mywindow3", detected_edges );  
 
                                                         
                         Canny( sharpened, sharpened, lowThreshold, highThreshold, 3, true );
                         dilate(sharpened, sharpened, getStructuringElement( MORPH_RECT,
                                                         Size( 3, 3 ),
                                                         Point( 2, 2) ));
-                        imshow( "mywindow7", sharpened );                                       
+                        if (windowsEnabled) imshow( "mywindow7", sharpened );                                       
                         Mat dst;
                         /// Using Canny's output as a mask, we display our result
                         dst = Scalar::all(0);
@@ -1447,16 +1480,16 @@ void* baseThread(void* Param)
                                         canReleaseBox = true;                                        
                                         baseType = BASE_QUEEN;
                                 } 
-                                else if (108 <= c3 && c3 <= 152 &&
+                                /*else if (108 <= c3 && c3 <= 152 &&
                                          108 <= c2 && c2 <= 152 &&
                                          108 <= c1 && c1 <= 152)
                                 {
                                         canReleaseBox = true;                                        
                                         baseType = BASE_GREY;
-                                } 
+                                } */
                         }
-                        imshow( "mywindow8", contourDrawing2 );  
-                        imshow( "mywindow10", orig_small_copy );
+                        if (windowsEnabled) imshow( "mywindow8", contourDrawing2 );  
+                        if (windowsEnabled) imshow( "mywindow10", orig_small_copy );
                }
                else
                {
@@ -1562,7 +1595,7 @@ int main(int argc, char** argv) {
                         ctrl.turn(saved_angle);
                         usleep(100000);
                 }*/
-                cvShowImage("mywindow", orig);
+                if (windowsEnabled) cvShowImage("mywindow", orig);
                 orig_small = small_size_camera_image(orig);
                 
   /// Reduce noise with a kernel 3x3

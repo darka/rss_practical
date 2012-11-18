@@ -59,12 +59,12 @@ bool Controller::whiskersTouched = false;
 Controller::Controller()
 : motoControl(0)
 , speed(40)
-, speedLeftFactor(1.0)
-, speedRightFactor(1.0)
-, accelLeftFactor(1.0)
-, accelRightFactor(1.0)
+, speedLeftFactor(1.5)
+, speedRightFactor(1.5)
+, accelLeftFactor(1.5)
+, accelRightFactor(1.5)
 , rotationOnSpotSpeed(100)
-, accel(40)
+, accel(15)
 , backwardTurnFastFactor(1.5)
 , backwardTurnSlowFactor(-1.5)
 , servo(0)
@@ -250,8 +250,8 @@ void Controller::turnLeft()
         CPhidgetMotorControl_setAcceleration (motoControl, 0, 0);
 	CPhidgetMotorControl_setVelocity (motoControl, 0, 0);
 
-	CPhidgetMotorControl_setAcceleration (motoControl, 1, accel * accelRightFactor *0.7);
-	CPhidgetMotorControl_setVelocity (motoControl, 1, speed * speedRightFactor *0.7);
+	CPhidgetMotorControl_setAcceleration (motoControl, 1, accel * accelRightFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 1, speed * speedRightFactor);
 	/*usleep(500000);
 	rotateOnSpotLeft();
 	usleep(50000);*/
@@ -281,8 +281,8 @@ void Controller::turnAt(double angle)
 
 void Controller::turnRight()
 {
-        CPhidgetMotorControl_setAcceleration (motoControl, 0, -accel * accelLeftFactor *0.7);
-	CPhidgetMotorControl_setVelocity (motoControl, 0, -speed * speedLeftFactor *0.7);
+        CPhidgetMotorControl_setAcceleration (motoControl, 0, -accel * accelLeftFactor);
+	CPhidgetMotorControl_setVelocity (motoControl, 0, -speed * speedLeftFactor);
 
 	CPhidgetMotorControl_setAcceleration (motoControl, 1, 0);
 	CPhidgetMotorControl_setVelocity (motoControl, 1, 0);
