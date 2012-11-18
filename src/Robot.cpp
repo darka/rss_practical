@@ -106,8 +106,13 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
                 }
         }
 
+        // stop before taking pictures
+        if (lastMoveWasTowardsBox)
+        {
+                ctrl->stop();
+                usleep(100000);
+        }
         // box detection
-        std::cout << "Box detection.\n";
         BoxDetectionResult boxDetectionResult;
         if (!vision->runBaseDetection)
         {
@@ -168,6 +173,7 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         size_t beginMax = moveableLine.first;
         size_t endMax = moveableLine.second;
         size_t distanceMax = moveableLine.second - moveableLine.first;
+        std::cout << beginMax << ", " << endMax << ", " << distanceMax << '\n';
 
         // centre of the line
         double movement_angle = 0;
@@ -226,16 +232,12 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
                 }
         }
         
-        //std::cout << "left IR " << leftIR << '/' << irThreshold << '\n';
-        if (leftIR > irThreshold)
+        if (leftIR > irThreshold || rightIR > irThreshold)
         {
                 moveBack = true;
                 
         }
-        if (rightIR > irThreshold)
-        {
-                moveBack = true;
-        }
+        //std::cout << "left IR " << leftIR << '/' << irThreshold << '\n';
         //std::cout << "right IR " << rightIR << '/' << irThreshold << '\n';
         
         if (moveBack)
@@ -257,35 +259,30 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         	}
         }
 
-        //std::cout << "counter: " << stoppedForPicturesCounter << ", angle: " << movement_angle << '\n';
-        if (moveTowardsBox || vision->baseDetectionEnabled())
+        if (movementEnabled) 
         {
-        	if (!lastMoveWasTowardsBox || moveTowardsBox)
-        	{
-        	        if (movementEnabled) 
-        	        {
-                	        if (vision->baseDetectionEnabled()) 
-                	        {
-                	                ctrl->turn(movement_angle);
-                	        }
-                	        else
-                	        {
-                	                ctrl->turnAt(movement_angle);
-                	        }
-                	}        
-        	}
-        	        
-        	if (moveTowardsBox)
-        	{
-        	        usleep(100000);
-        	        lastMoveWasTowardsBox = true;
-        	}       
-        	else
-        	{
-        	        lastMoveWasTowardsBox = false;
-        	}
-
+                std::cout << "movement is enabled\n";
+                if (vision->baseDetectionEnabled()) 
+                {
+                        std::cout << "turn\n";
+                	ctrl->turn(movement_angle);
+                }
+                else
+                {
+                        std::cout << "turnAt\n";
+                	ctrl->turnAt(movement_angle);
+                }
         }        
+        	        
+        if (moveTowardsBox)
+        {
+        	usleep(100000);
+        	lastMoveWasTowardsBox = true;
+        }       
+        else
+        {
+        	lastMoveWasTowardsBox = false;
+        }
 }
 
 std::pair<size_t, size_t> Robot::longestLine(int* vec, size_t size)

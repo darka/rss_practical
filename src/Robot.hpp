@@ -20,7 +20,7 @@ private:
         const static int freeSpaceThreshold = 20; 
         const static int irThreshold = 300;
         
-        const static bool movementEnabled = true;        
+        const static bool movementEnabled = true;
         bool lastMoveWasTowardsBox;
         bool hasBox;
         Controller* ctrl;

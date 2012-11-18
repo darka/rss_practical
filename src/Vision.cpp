@@ -554,7 +554,8 @@ void Vision::initSift()
                 sift_descriptors.push_back(descriptors_image);
                 std::cout << "Keypoints: " << sift_keypoints[i]->size() << '\n';
 
-                //imshow("mywindow6", input);
+                imshow("mywindow6", input);
+                std::cout << "Hi there.\n";
         }
 }
 
@@ -753,7 +754,8 @@ void* Vision::cameraThread(void* Param)
                         std::cout << "Camera frame empty\n";
                 orig_small = small_size_camera_image(orig);
                 origReady = true;
-                if (windowsEnabled) imshow("mywindow8", orig);
+                if (windowsEnabled) cvShowImage("mywindow8", orig);
+                if ( (cvWaitKey(10) & 255) == 27 ) break;
         }
 
     pthread_exit(NULL);
@@ -781,6 +783,7 @@ void* Vision::baseThread(void* Param)
                         cv::addWeighted(detected_edges, W2/10.0, sharpened, -W3/10.0, W4, sharpened);
                         if (windowsEnabled) imshow( "mywindow3", detected_edges );
 
+                        std::cout << "whoosh2\n";
 
                         Canny( sharpened, sharpened, lowThreshold, highThreshold, 3, true );
                         dilate(sharpened, sharpened, getStructuringElement( MORPH_RECT,
@@ -791,6 +794,7 @@ void* Vision::baseThread(void* Param)
                         /// Using Canny's output as a mask, we display our result
                         dst = Scalar::all(0);
 
+                        std::cout << "whoosh3\n";
                         Mat(orig_small).copyTo( dst, sharpened);
                         vector<vector<Point> > contours;
                         vector<Vec4i> hierarchy;
@@ -806,6 +810,7 @@ void* Vision::baseThread(void* Param)
 
                         /// Draw contours
                         Mat contourDrawing = Mat::zeros( detected_edges.size(), CV_8UC1 );
+                        std::cout << "whoosh4\n";
                         for( int i = 0; i< bases.size(); i++ )
                         {
                                 Mat m(bases[i]);
@@ -824,6 +829,7 @@ void* Vision::baseThread(void* Param)
                         hierarchy.clear();
                         approx.clear();
                         bases.clear();
+                        std::cout << "whoosh5\n";
                         findContours( contourDrawing, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
                         for( int i = 0; i< contours.size(); i++ )
                         {
