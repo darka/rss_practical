@@ -79,7 +79,12 @@ inline void Robot::dropBox(double angle)
         ctrl->turn(angle);
         usleep(100000);
         ctrl->turn(0); 
-        usleep(35000 * (Vision::CAMERA_HEIGHT - vision->baseCenterY));
+
+        int distanceMult = (Vision::CAMERA_HEIGHT - vision->baseCenterY);
+        int sleepTime = 35000 * distanceMult;
+        std::cout << "dropping parameters: " << distanceMult << ", " << sleepTime << '\n';
+        usleep(sleepTime);
+
         ctrl->openServo();
         ctrl->stop();
         ctrl->moveBackward();
