@@ -24,6 +24,15 @@ struct BoxDetectionResult
         bool centered;
 };
 
+struct BoxModel
+{
+        BoxModel() : area(0), width(0) {}
+        std::pair<int, int> position;
+        int width;
+        int area;
+};
+
+
 
 class Vision{
 
@@ -104,6 +113,8 @@ private:
     BASE_TYPE  baseType;
     IplImage*  orig = NULL;
     IplImage*  orig_small = NULL;
+    bool origReady = false;
+    BoxModel boxModel;
 
     const int CAMERA_WIDTH = 140;
     const int CAMERA_HEIGHT = 80;
@@ -126,6 +137,11 @@ private:
     int  d = 11;
     int  e = 4;
     int  PolygonBase = 15;
+    int  W1 = 2;
+    int  W2 = 10;
+    int  W3 = 0;
+    int  W4 = 9;
+    int  W5 = 2;
 
     std::vector< std::vector<cv::KeyPoint>* >   sift_keypoints;
     std::vector< int >                          keypoint_match_count;
