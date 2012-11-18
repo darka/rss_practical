@@ -1,7 +1,61 @@
 #include "Vision.hpp"
 
+Vision::Vision()
+{
+        initSift();
 
+	printf("Starting threads...\n");
+        
+	// Create thread object
+	pthread_t thread1;
+	pthread_t thread2;
 
+	// Create data
+	int id1 = 1;
+	int id2 = 2;
+        
+	// Start thread
+	pthread_create(&thread1, NULL, cameraThread, (void*)&id1);
+	pthread_create(&thread2, NULL, baseThread, (void*)&id2);
+
+	while (!origReady) 
+        { 
+                std::cout << "waiting for camera thread...\n"; 
+        }
+}
+
+Vision::~Vision()
+{
+        cvReleaseCapture( &capture );
+}
+
+void Vision::update()
+{
+        IplImage* prepared = cvCreateImage(cvSize(orig_small->width,orig_small->height),IPL_DEPTH_8U, orig_small->nChannels);
+        cvSmooth(orig_small, prepared, CV_GAUSSIAN, 3, 3);
+        cvDilate(prepared, prepared, NULL, 5);
+                         
+        if ( !prepared ) {
+        	std::cerr << "ERROR: capture is NULL \n";
+            break;
+        }
+        
+        for (size_t i = 0; i < CAMERA_WIDTH; ++i)
+        {
+                odv[i] = 0;
+        }
+        
+        detected_floor = cvCreateImage(cvSize(prepared->width, prepared->height),IPL_DEPTH_8U, prepared->nChannels); 
+          
+        // Segment floor from image and write obstacle distances to odv vector
+        segment_floor(prepared, detected_floor, odv);
+}
+
+void Vision::cleanupAfterUpdate()
+{
+        cvReleaseImage(&prepared);
+        cvReleaseImage(&detected_floor);
+}
 
 inline static bool Vision::inRangeHsv(unsigned char hue,
                                       unsigned char sat,
@@ -878,7 +932,4 @@ static void* Vision::baseThread(void* Param)
 
     pthread_exit(NULL);
 }
-
-
-
 

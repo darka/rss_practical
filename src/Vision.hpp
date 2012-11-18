@@ -105,6 +105,7 @@ public:
     BASE_TYPE  baseType;
     IplImage*  orig = NULL;
     IplImage*  orig_small = NULL;
+    IplImage* detected_floor;
     bool origReady = false;
     BoxModel boxModel;
 

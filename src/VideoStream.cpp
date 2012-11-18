@@ -1340,26 +1340,12 @@ void* baseThread(void* Param)
 
 int main(int argc, char** argv) {
 
-        initSift();
         
         int moveable[CAMERA_WIDTH];
         for (size_t i = 0; i < CAMERA_WIDTH; ++i)
         {
           moveable[i] = 0;
         }
-      
-
-        
-	printf("Starting threads...\n");
-	// Create thread object
-	pthread_t thread1;
-	pthread_t thread2;
-	// Create data
-	int id1 = 1;
-	int id2 = 2;
-	// Start thread
-	pthread_create(&thread1, NULL, cameraThread, (void*)&id1);
-	pthread_create(&thread2, NULL, baseThread, (void*)&id2);
 
         if (windowsEnabled) 
         {
@@ -1415,7 +1401,6 @@ int main(int argc, char** argv) {
         int odv[CAMERA_WIDTH];
         int boxVec[CAMERA_WIDTH];
         
-	while (!origReady) { std::cout << "waiting for camera thread...\n"; };
         while ( 1 ) {
                 std::cout << "has box? " << hasBox << '\n';
                 if(boxDetected){
@@ -1476,7 +1461,6 @@ int main(int argc, char** argv) {
         }
 
         // Release the capture device housekeeping
-        cvReleaseCapture( &capture );
         if (windowsEnabled) 
         {
                 cvDestroyWindow( "mywindow" );

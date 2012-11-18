@@ -14,8 +14,9 @@ public:
         static std::pair<size_t, size_t> Robot::longestLine(int* vec, size_t size);
         inline void stopAndRotate();
         inline void grabBox();
-        inline void dropBox();
-        void run();
+        inline void dropBox(double angle);
+        void run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdCapture);
+
 private:
         const static int freeSpaceThreshold = 20; 
         const static int irThreshold = 300;
@@ -27,7 +28,11 @@ private:
         Controller* ctrl;
         Vision* vision;
 
-        // Try to remove these        
+        int odv[CAMERA_WIDTH];
+        int boxVec[CAMERA_WIDTH];
+        int moveable[CAMERA_WIDTH];
+
+        // TODO: Try to get rid of these        
         int stoppedForPicturesCounter = 0;
         int sawBoxCounter = 3;
         bool running;

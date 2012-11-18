@@ -1,6 +1,6 @@
 #include "Robot.hpp"
 
-Robot::Robot(Controller& ctrl)
+Robot::Robot(Controller& ctrl, Vision& vision)
 : canReleaseBox(false) 
 , stoppedForPicturesCounter(0)
 , sawBoxCounter(0)
@@ -10,31 +10,29 @@ Robot::Robot(Controller& ctrl)
 , vision(&vision)
 , running(true)
 {
-}
-
-void Robot::start()
-{
         while (running)
         {
-                run();
+                vision->update();
+                run(vision->detected_floor, vision->orig_small, vision->orig);
+                vision->cleanupAfterUpdate();
         }
 }
 
-void Robot::moveBackConsideringFreeSpace(IplImage* img, int* odv)
+void Robot::moveBackConsideringFreeSpace(IplImage* detected_floor, int* odv)
 {
         std::cout <<"Moving backwards...\n";
         int leftSpace = 0;
-        for (size_t i = 0; i < img->width / 2; ++i)
+        for (size_t i = 0; i < detected_floor->width / 2; ++i)
         {
              leftSpace += odv[i];
         }
         int rightSpace = 0;
-        for (size_t i = img->width / 2; i < img->width; ++i)
+        for (size_t i = detected_floor->width / 2; i < detected_floor->width; ++i)
         {
              rightSpace += odv[i];
         }
-        double leftSpaceAverage = leftSpace / (img->width / 2.0);
-        double rightSpaceAverage = rightSpace / (img->width / 2.0);
+        double leftSpaceAverage = leftSpace / (detected_floor->width / 2.0);
+        double rightSpaceAverage = rightSpace / (detected_floor->width / 2.0);
         ctrl->moveBackward();
         usleep(400000);
         if (leftSpaceAverage < rightSpaceAverage)
@@ -95,11 +93,10 @@ inline void Robot::dropBox(double angle)
 }
 
 
-void Robot::run(int* moveable, int* odv, IplImage* img, IplImage* normalCapture, IplImage* hdCapture, int* boxVec)
+void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdCapture)
 {
-
         // write the moveable vector
-        for (size_t i = 0; i < img->width; ++i)
+        for (size_t i = 0; i < detected_floor->width; ++i)
         {
                 if (odv[i] <= freeSpaceThreshold)
                 {
@@ -143,12 +140,12 @@ void Robot::run(int* moveable, int* odv, IplImage* img, IplImage* normalCapture,
 		dropBox(ctrl, angle);
         }
         
-        std::pair<size_t, size_t> boxLine = longestLine(boxVec, img->width);
+        std::pair<size_t, size_t> boxLine = longestLine(boxVec, detected_floor->width);
               
         
         // determine if should move towards box        
         bool moveTowardsBox = false;
-        int minBoxDistance = img->height;
+        int minBoxDistance = detected_floor->height;
         if (!hasBox && boxDetectionResult.detected) // only move towards box if it is too far
         {
                 if (boxLine.second - boxLine.first == 0) 
@@ -168,7 +165,7 @@ void Robot::run(int* moveable, int* odv, IplImage* img, IplImage* normalCapture,
         }    
 
         // calculate the line, the centre of which we should move towards
-        std::pair<size_t, size_t> moveableLine = longestLine(moveable, img->width);
+        std::pair<size_t, size_t> moveableLine = longestLine(moveable, detected_floor->width);
         size_t beginMax = moveableLine.first;
         size_t endMax = moveableLine.second;
         size_t distanceMax = moveableLine.second - moveableLine.first;
@@ -187,7 +184,7 @@ void Robot::run(int* moveable, int* odv, IplImage* img, IplImage* normalCapture,
         else
         {
                 // calculate the minimum distance between the ground and the obstacles spanned by the line
-                lowestY = img->height;
+                lowestY = detected_floor->height;
                 for (size_t i = beginMax; i <= endMax; ++i)
                 {
                         if (odv[i] < lowestY)
@@ -199,7 +196,7 @@ void Robot::run(int* moveable, int* odv, IplImage* img, IplImage* normalCapture,
                 
         }
 
-        int bottom_dist = goal_dist - (img->width / 2);
+        int bottom_dist = goal_dist - (detected_floor->width / 2);
         if (bottom_dist != 0) 
         {
 
@@ -245,7 +242,7 @@ void Robot::run(int* moveable, int* odv, IplImage* img, IplImage* normalCapture,
         if (moveBack)
         {
                 if (movementEnabled) 
-                        moveBackConsideringFreeSpace(img, odv, ctrl);
+                        moveBackConsideringFreeSpace(detected_floor, odv, ctrl);
                 return;
         }
         
