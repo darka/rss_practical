@@ -224,19 +224,17 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         		}
         }
         
-        int leftIR = ctrl->getIRLeftValue();
-        int rightIR = ctrl->getIRRightValue();
-        
+
         bool moveBack = false;
-        if (!moveTowardsBox)
+        
+        if (!moveTowardsBox && distanceMax < 10)
         {
-                if (distanceMax < 10)
-                {
-                        moveBack = true;
-                        std::cout << "Moving back: camera facing wall\n";
-                }
+                moveBack = true;
+                std::cout << "Moving back: camera facing wall\n";
         }
         
+        int leftIR = ctrl->getIRLeftValue();
+        int rightIR = ctrl->getIRRightValue();
         if (leftIR > irThreshold || rightIR > irThreshold)
         {
                 moveBack = true;

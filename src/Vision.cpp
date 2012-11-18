@@ -247,34 +247,16 @@ BoxDetectionResult Vision::detectBoxes()
         IplImage* frame = orig_small;
         IplImage* frameHD = orig;
         const int BoxROIError = 65;
-        //CvRect rect = cvRect(boxModel.position.first - boxModel.width / 2 - BoxROIError, 0, boxModel.width + BoxROIError, frame->height);
-        //cvSetImageROI(frame, rect);
 
-        IplImage* frameCutout;
-        /*if (boxModel.area != 0)
-        {
-                frameCutout = cvCreateImage(cvSize(frame->width, frame->height), frame->depth, frame->nChannels);
-                cvCopy(frame, frameCutout);
-
-                //cvRectangle(frameCutout, cvPoint(0, 0), cvPoint(std::max(boxModel.position.first - boxModel.width / 2 - BoxROIError, 0), frame->height), cvScalar(255, 255, 255), CV_FILLED);
-                //cvRectangle(frameCutout, cvPoint(std::min(boxModel.position.first + boxModel.width / 2 + BoxROIError, frame->width), 0), cvPoint(frame->width, frame->height), cvScalar(255, 255, 255), CV_FILLED);
-                std::cout << "hello hello!\n";
-        }
-        else
-        {*/
-                frameCutout = frame;
-        //}
-        if (windowsEnabled) cvShowImage("mywindow6", frameCutout);
+        if (windowsEnabled) cvShowImage("mywindow6", frame);
 
         BoxDetectionResult ret;
         IplImage* gray2;
-        gray2 = cvCreateImage(cvSize(frameCutout->width, frameCutout->height), IPL_DEPTH_8U, 1);
-        cvCvtColor(frameCutout,gray2,CV_BGR2GRAY);
+        gray2 = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
+        cvCvtColor(frame,gray2,CV_BGR2GRAY);
 
-        IplImage* gray2Dilated = cvCreateImage(cvSize(frameCutout->width, frameCutout->height), IPL_DEPTH_8U, 1);
+        IplImage* gray2Dilated = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
         cvCopy(gray2, gray2Dilated);
-        //cvNot(gray2, gray2Inv);
-
 
         CvScalar avg;
         CvScalar avgStd;
@@ -285,41 +267,9 @@ BoxDetectionResult Vision::detectBoxes()
         cvThreshold(gray2Dilated, gray2Dilated, (int)avg.val[0] - d* (int)(avgStd.val[0]/e), 255, CV_THRESH_BINARY_INV);
         cvDilate(gray2Dilated, gray2Dilated, NULL, 2);
 
-
-
-        /*CvScalar avgInv;
-        CvScalar avgStdInv;
-        cvAvgSdv(gray2Inv, &avgInv, &avgStdInv, NULL);
-
-        */
-        //cvShowImage("mywindow8", gray2Dilated);
-
         cv::Mat gray_CvMat(gray2, false);
 
-        /*cv::Mat holes=gray_CvMat.clone();
-        cv::floodFill(holes,cv::Point2i(0,0),cv::Scalar(1));
-        for(int i=0;i<gray_CvMat.rows*gray_CvMat.cols;i++)
-        {
-        if(holes.data[i]==0)
-            gray_CvMat.data[i]=1;
-        }*/
-
         cv::Mat grayDilated_CvMat(gray2Dilated, false);
-
-        /*cv::Mat holesDilated=grayDilated_CvMat.clone();
-        cv::floodFill(holesDilated,cv::Point2i(0,0),cv::Scalar(1));
-        */
-
-        // TODO: instead of OR'ing these two images, OR the contours detected on them
-        /*for(int i=0;i<gray_CvMat.rows*gray_CvMat.cols;i++)
-        {
-        if(grayDilated_CvMat.data[i]==255)
-            gray_CvMat.data[i]=255;
-        }*/
-
-        //imshow("mywindow4", gray_CvMat);
-        //imshow("mywindow8",  grayDilated_CvMat);
-
 
         vector<vector<Point> > contours;
         vector<Vec4i> hierarchy;
@@ -353,19 +303,11 @@ BoxDetectionResult Vision::detectBoxes()
 
 
         int idx = 0;
-        //if (!squares.empty())
-        //{
+
         std::vector< std::pair<int, int> > centers;
-        //std::cout << "amount of contours: " << squares.size() << '\n';
-        //for( ; idx >= 0; idx = hierarchy[idx][0] )
         for(size_t idx = 0; idx < squares.size(); ++idx)
         {
                 bool notRemoved = true;
-                /*std::cout << "-----\n";
-                for (vector<Point>::iterator i = squares[idx].begin(); i != squares[idx].end(); ++i)
-                {
-                        std::cout << " < " << (*i) << '\n';
-                }*/
 
                 Mat m(squares[idx]);
                 double area = contourArea(m);
@@ -399,7 +341,6 @@ BoxDetectionResult Vision::detectBoxes()
                 int width = max_x - min_x;
                 int height = max_y - min_y;
                 float ratio = (float)width / height;
-                //      std::cout << "ratio: " << ratio << '\n';
                 float boundingBoxArea = width * height;
 
 
@@ -407,7 +348,6 @@ BoxDetectionResult Vision::detectBoxes()
                 if(contourMaxSize > area && area > contourMinSize && (maxRatio/1000.f) > ratio && ratio > (minRatio/1000.f) && boundingBoxArea < 2*area)
                 {
                         drawContours(drawing, squares, idx, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
-                        //ctrl.stop();
 
                         int min_x_ = min_x;
                         int min_y_ = min_y;
@@ -443,51 +383,44 @@ BoxDetectionResult Vision::detectBoxes()
                         centers.push_back(std::make_pair(center_x, center_y));
 
                         interpolatedCoordinates(min_x, min_y, max_x, max_y, drawing.cols, drawing.rows);
-                        //ctrl.stop();
 
                         ret.detected = true;
-                        //if (ret.detected)
-                        //{
-                                std::cout << "**** box detected with area: " << area << '\n';
-                                ret.too_far = (area < 250);
-                                if (ret.too_far)
-                                {
-                                        std::cout << "**** Box is too far to approach.\n";
-                                }
+                        std::cout << "**** box detected with area: " << area << '\n';
+                        ret.too_far = (area < 250);
+                        if (ret.too_far)
+                        {
+                                std::cout << "**** Box is too far to approach.\n";
+                        }
 
-                                int box_center_x = ((min_x + max_x) / 2);
-                                int box_center_y = ((min_y + max_y) / 2);
-                                int image_center_x = REAL_WIDTH / 2;
-                                int image_center_y = REAL_HEIGHT / 2;
-                                //std::cout << "**** box at " << box_center_x << ", " << box_center_y << "; image center at " << image_center_x << ", " << image_center_y << "\n";
+                        int box_center_x = ((min_x + max_x) / 2);
+                        int box_center_y = ((min_y + max_y) / 2);
+                        int image_center_x = REAL_WIDTH / 2;
+                        int image_center_y = REAL_HEIGHT / 2;
+                        //std::cout << "**** box at " << box_center_x << ", " << box_center_y << "; image center at " << image_center_x << ", " << image_center_y << "\n";
 
-                                std::cout << "box at: " << box_center_x << ", center at: " << (REAL_WIDTH / 2) << '\n';
-                                ret.centered = boxIsCentered(image_center_x, image_center_y, box_center_x, box_center_y);
-                                /*
-                                ret.centered = ((image_center_x - center_error) < box_center_x && box_center_x < (image_center_x + center_error)) &&
-                                                ((image_center_y - center_error) < box_center_y && box_center_y < (image_center_y + center_error));
-                                */
-                                if (!ret.centered)
-                                {
-                                        std::cout << "**** Box is not centered.\n";
-                                }
-                                if (ret.centered && !ret.too_far)
-                                {
-                                        std::cout << "**** Box can be approached.\n";
-                                        correct_box = detectFeatures(min_x, min_y, max_x, max_y, frameHD);
-                                        if (correct_box)
-                                                std::cout << "**** approaching\n";
-                                        else
-                                                std::cout << "**** but not enough keypoints\n";
-                                }
-                        //}
+                        std::cout << "box at: " << box_center_x << ", center at: " << (REAL_WIDTH / 2) << '\n';
+                        ret.centered = boxIsCentered(image_center_x, image_center_y, box_center_x, box_center_y);
+
+                        if (!ret.centered)
+                        {
+                                std::cout << "**** Box is not centered.\n";
+                        }
+                        if (ret.centered && !ret.too_far)
+                        {
+                                std::cout << "**** Box can be approached.\n";
+                                correct_box = detectFeatures(min_x, min_y, max_x, max_y, frameHD);
+                                if (correct_box)
+                                        std::cout << "**** approaching\n";
+                                else
+                                        std::cout << "**** but not enough keypoints\n";
+                        }
 
                 }
         }
-        //}
+
 
         Mat& drawingScaled = drawing;
-        //if (windowsEnabled) imshow("mywindow2", drawingScaled);
+
         std::memset(boxVec, 0, sizeof(int)*drawingScaled.cols);
 
         for (int i = 0; i < drawingScaled.rows; i++)
@@ -562,35 +495,11 @@ void Vision::initSift()
 bool Vision::detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage* frameHD)
 {
         bool ret = false;
-        // Add results to image and save.
-        //cv::Mat output;
 
-
-        //cvNamedWindow( "mywindow", CV_WINDOW_AUTOSIZE );
-        //cvNamedWindow( "mywindow2", CV_WINDOW_AUTOSIZE );
-/*        cvReleaseCapture(&capture);
-        usleep(10);
-
-
-        capture = cvCaptureFromCAM( CV_CAP_ANY );
-
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_WIDTH, 640 );
-        cvSetCaptureProperty( capture, CV_CAP_PROP_FRAME_HEIGHT, 480 );
-*/
         std::vector<cv::KeyPoint> keypoints_camera;
 
 
-        /*IplImage* camera = NULL;
-
-        while ( camera == NULL ) {
-                camera = cvQueryFrame( capture );
-        }*/
-
         cv::Mat cameraMat(frameHD);
-        //cv::Mat cameraMatGray;
-        //cvtColor( cameraMat, cameraMatGray, CV_RGB2GRAY );
-
-        //cv::Mat interestingImage(frame);
 
         // Setup a rectangle to define your region of interest
         int width = max_x - min_x;
@@ -659,14 +568,6 @@ bool Vision::detectFeatures(int min_x, int min_y, int max_x, int max_y, IplImage
                         if (count >= keypoint_match_count[image_iter])
                         {
                                 ret = true;
-                                /*cv::Mat outputCam;
-                                cv::drawKeypoints(croppedImageGray, keypoints_camera, outputCam);
-                                imshow("mywindow5", outputCam);
-                                std::stringstream ss;
-                                ss << "matched";
-                                ss << matchedImageCounter;
-                                ss << ".png";
-                                cv::imwrite(ss.str().c_str(), outputCam);*/
                                 break;
                         }
                 }
@@ -729,6 +630,7 @@ inline IplImage* Vision::small_size_camera_image(IplImage* orig)
 
 inline IplImage* Vision::grabFrame()
 {
+        cvGrabFrame(capture);
         cvGrabFrame(capture);
         return cvRetrieveFrame( capture );
 }
