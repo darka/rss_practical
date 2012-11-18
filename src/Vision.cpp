@@ -768,9 +768,10 @@ void* Vision::baseThread(void* Param)
     int id = *((int*)Param);
     // Perform some action
     // Count down from 10 using different speed depending on data
-        while (orig_small == NULL) { usleep(1); }
+        while (orig_small == NULL) { usleep(100); std::cout << "WOOSH THREAD\n"; }
         while (true)
         {
+        		//std::cout <<runBaseDetection << "\n";
                 if (runBaseDetection)
                 {
                 /// Canny detector
@@ -781,7 +782,7 @@ void* Vision::baseThread(void* Param)
                         cv::Mat sharpened;
                         cv::GaussianBlur(detected_edges, sharpened, cv::Size(0, 0), W1);
                         cv::addWeighted(detected_edges, W2/10.0, sharpened, -W3/10.0, W4, sharpened);
-                        if (windowsEnabled) imshow( "mywindow3", detected_edges );
+                        //if (windowsEnabled) imshow( "mywindow3", detected_edges );
 
                         std::cout << "whoosh2\n";
 
@@ -789,7 +790,7 @@ void* Vision::baseThread(void* Param)
                         dilate(sharpened, sharpened, getStructuringElement( MORPH_RECT,
                                                         Size( 3, 3 ),
                                                         Point( 2, 2) ));
-                        if (windowsEnabled) imshow( "mywindow7", sharpened );
+                        //if (windowsEnabled) imshow( "mywindow7", sharpened );
                         Mat dst;
                         /// Using Canny's output as a mask, we display our result
                         dst = Scalar::all(0);
@@ -907,12 +908,13 @@ void* Vision::baseThread(void* Param)
                                         baseType = BASE_GREY;
                                 } */
                         }
-                        if (windowsEnabled) imshow( "mywindow8", contourDrawing2 );
-                        if (windowsEnabled) imshow( "mywindow10", orig_small_copy );
+                        //if (windowsEnabled) imshow( "mywindow8", contourDrawing2 );
+                        //if (windowsEnabled) imshow( "mywindow10", orig_small_copy );
                }
                else
                {
                         releaseBox = false;
+                        usleep(10);
                }
 
         }
