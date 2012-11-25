@@ -13,7 +13,7 @@
 
 #define PI 3.14159265
 
-enum BASE_TYPE { BASE_QUEEN, BASE_GREY };
+enum BASE_TYPE { BASE_NONE, BASE_QUEEN, BASE_PURPLE };
 
 struct BoxDetectionResult
 {
@@ -98,7 +98,7 @@ public:
     bool static canReleaseBox() { return releaseBox; }
     
     void static matchBase(cv::Mat const& src_test);
-    int static calcHist(IplImage* img, const char* window_name);
+    BASE_TYPE static calcHist(IplImage* img, const char* window_name);
     int static calcHistGround();
     
     static CvCapture* capture;
@@ -161,7 +161,8 @@ public:
         
     static const bool windowsEnabled = true;
     
-    const static float queenHist[];
+    const static double queenHist[];
+    const static double purpleHist[];
     
 };
 

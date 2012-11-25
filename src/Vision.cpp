@@ -4,7 +4,7 @@
 using namespace cv;
 
 CvCapture* Vision::capture = NULL;
-BASE_TYPE Vision::baseType = BASE_QUEEN;
+BASE_TYPE Vision::baseType = BASE_NONE;
 IplImage* Vision::orig = NULL;
 IplImage* Vision::orig_small = NULL;
 IplImage* Vision::detected_floor = NULL;
@@ -23,8 +23,12 @@ const char* Vision::hist_window_1 = "hist1";
 const char* Vision::hist_window_2 = "hist2";
 const char* Vision::hist_window_3 = "hist3";
     
-const float Vision::queenHist[] = {
- 0.5, 0.75, 1.0, 1.0, 1.25, 1.75, 1.5, 1.75, 2.25, 2.25, 2.25, 1.75, 1.75, 1.5, 1.5, 1.0, 1.0, 1.0, 1.25, 1.0, 0.75, 0.75, 0.75, 0.5, 0.0, 0.0, 0.5, 0.75, 0.5, 0.25, 0.5, 0.5, 0.5, 0.5, 0.75, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.25, 1.5, 2.0, 2.25, 2.75, 3.5, 4.0, 4.5, 5.5, 5.75, 6.5, 7.75, 8.5, 10.0, 10.0, 10.75, 11.25, 12.75, 13.5, 13.75, 13.75, 12.75, 13.0, 12.25, 12.25, 11.5, 11.25, 11.25, 11.5, 11.5, 11.5, 12.0, 12.25, 11.5, 12.25, 12.25, 12.75, 12.5, 12.0, 11.0, 11.0, 11.25, 11.0, 12.0, 12.25, 12.75, 14.5, 15.0, 15.75, 17.0, 17.75, 17.25, 18.25, 19.75, 22.0, 24.25, 25.5, 27.25, 28.5, 30.25, 31.5, 33.25, 35.75, 38.25, 39.25, 39.75, 43.25, 49.25, 49.75, 51.25, 52.75, 55.0, 50.25, 50.5, 44.0, 41.0, 36.5, 34.0, 30.75, 28.75, 25.75, 24.25, 21.5, 20.5, 18.25, 17.0, 15.75, 14.25, 14.0, 12.5, 10.75, 8.75, 8.5, 7.25, 6.5, 5.75, 5.5, 5.25, 5.5, 5.5, 4.25, 3.75, 3.0, 2.5, 2.25, 1.75, 1.75, 2.0, 1.75, 2.0, 2.0, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.25, 2.0, 2.25, 2.25, 2.0, 1.75, 2.0, 2.0, 2.0, 1.75, 1.75, 2.0, 2.0, 2.5, 1.75, 2.25, 2.25, 2.25, 2.0, 2.25, 2.0, 1.75, 2.0, 2.0, 2.0, 1.75, 1.75, 1.5, 1.5, 1.5, 1.5, 1.5, 1.75, 1.5, 1.5, 1.0, 1.5, 1.25, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.0, 1.0, 1.0, 1.0, 0.75, 0.75, 0.75, 0.75, 0.75, 0.5, 0.5, 0.5, 0.5, 0.5, 0.25, 0.5 };
+const double Vision::queenHist[] = {
+0.0008318875, 0.00030381955, 0.000371335525, 0.0004870768, 0.0005111883, 0.00047984215, 0.000528067575, 0.0004894876, 0.00049430935, 0.00044849525, 0.00041956025, 0.00038098, 0.000347222, 0.0003038195, 0.00032069825, 0.00029176315, 0.000318287, 0.0003327545, 0.0003472225, 0.00028452925, 0.00024112665, 0.000180845025, 0.000185667575, 0.00019290125, 0.0001639661, 0.000132619525, 0.00013503085, 0.000110918125, 0.00013261965, 0.00013744215, 0.00011815215, 0.00012779715, 0.00015190965, 0.000103684525, 0.0001398535, 0.000113329425, 0.00013020835, 0.00014467615, 0.000135030875, 0.000120563375, 0.000115740875, 0.00016637715, 0.0001880785, 0.000180845, 0.00019772375, 0.0002387155, 0.00023871515, 0.0002869405, 0.00031828725, 0.00032793215, 0.000344811, 0.00038098, 0.000438849875, 0.000523244, 0.00050877725, 0.0005762915, 0.00072579, 0.00088493425, 0.001039253, 0.00111641575, 0.0013141405, 0.0014130035, 0.00140576975, 0.00160108, 0.00152150725, 0.00152633125, 0.0015938465, 0.001615548, 0.001622782, 0.00172164375, 0.001851855, 0.0021773725, 0.00242332, 0.0026885625, 0.0028163575, 0.0032696775, 0.0034336425, 0.0038387375, 0.004108795, 0.00444396, 0.004837, 0.00474296, 0.00499614, 0.0047116125, 0.0047815375, 0.0049093375, 0.0045886375, 0.0043716225, 0.0042245375, 0.0038556125, 0.003513215, 0.0034674, 0.003421585, 0.0035855525, 0.0039014275, 0.0040605725, 0.0041280875, 0.00436439, 0.004979265, 0.0053722975, 0.00616319, 0.006252415, 0.0070215975, 0.0075906675, 0.00857447, 0.0098813575, 0.0111062775, 0.0133366975, 0.0147328375, 0.016336325, 0.0165653875, 0.0155237175, 0.0150896975, 0.0148919575, 0.0147497, 0.0153597625, 0.0149619175, 0.0150342225, 0.0157528125, 0.01586373, 0.016297725, 0.0169488075, 0.01626638, 0.01567321, 0.0153694, 0.01484855, 0.015294675, 0.01561054, 0.0186197825, 0.020686245, 0.02418982, 0.0262996625, 0.0275245875, 0.02752459, 0.02709297, 0.0270905475, 0.0256799875, 0.0244454, 0.022682755, 0.02095148, 0.0196783475, 0.0179422125, 0.015764855, 0.013881665, 0.012270945, 0.0100670175, 0.0077908, 0.00594618, 0.00467062225, 0.00377363225, 0.00297067725, 0.00256076225, 0.00215567225, 0.0017023535, 0.0013985345, 0.0011863445, 0.001003086, 0.00087046625, 0.000764372, 0.00081741975, 0.00076437125, 0.000706501, 0.00073302475, 0.0007667825, 0.00088011175, 0.00077401625, 0.000800541, 0.0007571375, 0.0007691945, 0.00068479925, 0.000663098, 0.00078125, 0.00068962175, 0.0007040895, 0.00077401625, 0.0006052275, 0.00071132325, 0.000716146, 0.0007523145, 0.00076196, 0.000752315, 0.0007667825, 0.00068962175, 0.000689622, 0.00063416275, 0.00072096825, 0.00075472625, 0.00068238825, 0.000778839, 0.00068962175, 0.00072096825, 0.000672743, 0.00061487275, 0.000626929, 0.00062210675, 0.00060281625, 0.00064139675, 0.000600405, 0.0005232445, 0.00058352625, 0.00054976865, 0.00060281655, 0.00053530085, 0.00049430955, 0.00052083355, 0.00048707555, 0.00048948675, 0.0005232445, 0.0005304785, 0.00051118825, 0.00054735725, 0.00054494575, 0.000544946, 0.000491898265, 0.0005304785, 0.000496720765, 0.0004316165, 0.000472608015, 0.000453318, 0.000460551775, 0.000489487, 0.00045331775, 0.000446084265, 0.00039785875, 0.00040268125, 0.000390625, 0.000352044765, 0.0003134645, 0.00032793225, 0.000315876015, 0.00030140815, 0.000241126565, 0.000241126565, 0.00022183655, 0.00020978005, 0.000173611015, 0.00017361125, 0.00016878875, 0.000188078665, 0.00016637735, 0.00014949839, 0.000130208515, 0.000103684325, 0.0001229746, 0.00010850705, 0.000130208375, 0.000144676015, 6.751534e-05, 9.403945e-05, 6.51041e-05, 6.2692825e-05, 4.3402815e-05, 3.134645e-05, 2.4112665e-05, 2.411265e-05 };
+
+const double Vision::purpleHist[] = {
+0.00152070366667, 0.000524048353333, 0.000626930033333, 0.000617285066667, 0.000643005066667, 0.000427598353333, 0.0004018767, 0.000366512333333, 0.00032793202, 0.000389018666667, 0.0002989968, 0.0003504372, 0.000298996833333, 0.000311857133333, 0.000315072, 0.000482253, 0.000488682666667, 0.000765174333333, 0.000906635666667, 0.000887345666667, 0.000932355666667, 0.000800539, 0.000816613666667, 0.000540122333333, 0.000392232333333, 0.000340792, 0.000289352, 0.000273276666667, 0.000289352, 0.000273276666667, 0.000298996966667, 0.0002282666, 0.0001607509, 0.0002636316, 0.000173610866667, 0.0001350309, 0.0001253858, 0.0001864712, 0.0001575358, 7.71605333333e-05, 1.6075e-05, 1.28600333333e-05, -1.92899666667e-05, 1.60750666667e-05, -4.50101333333e-05, -0.0001382458, -0.0001864712, -0.000234696333333, -0.0002089764, -0.000221836666667, -0.000340792333333, -0.000318287133333, -0.000472607666667, -0.0002732765, -0.0004147377, -0.000405092633333, -0.000221836666667, -0.000315072333333, -0.000157536, -1.28613333333e-05, 1.60736666667e-05, -0.000234696666667, 0.000192901, 0.000459746, 0.000305427666667, 0.000440458433333, 0.000639789, 0.000845551333333, 0.001128472, 0.001369597, 0.00148855533333, 0.00170717566667, 0.00141139233333, 0.001588219, 0.001623586, 0.00188078633333, 0.00212512846667, 0.00198366846667, 0.00197080666667, 0.00208011933333, 0.00231481433333, 0.00237911466667, 0.00232446033333, 0.00236947, 0.00283243, 0.00295782, 0.00310571, 0.00312821333333, 0.00320216333333, 0.00359439333333, 0.00350758666667, 0.00401877666667, 0.00427597666667, 0.00447852333333, 0.00507973333333, 0.00574524, 0.00576453, 0.00577418, 0.00543338333333, 0.00497685333333, 0.00438528666667, 0.00446244666667, 0.00372299333333, 0.00297068, 0.00323431, 0.00257844833333, 0.0025141452, 0.00202546133333, 0.00123135233333, 0.000816615666667, -0.000208973333333, -0.00154964, -0.00216371, -0.00464891833333, -0.00708590666667, -0.00974152333333, -0.0104070066667, -0.00939751333333, -0.0110789433333, -0.0144161666667, -0.0176086666667, -0.0195377, -0.0217271, -0.0238297333333, -0.0233089, -0.0248842666667, -0.0247235, -0.0225340666667, -0.0199170333333, -0.0136830966667, -0.01025911, -0.0081565, -0.00846516666667, -0.01043916, -0.0158886333333, -0.0202256846667, -0.0275913333333, -0.0354295, -0.0330247, -0.0249003333333, -0.01529388, -0.00460391666667, 0.00237268666667, 0.00649433833333, 0.00927533, 0.0117766333333, 0.0127765, 0.01291475, 0.0126542933333, 0.0141718333333, 0.0148662333333, 0.0154514, 0.0156314366667, 0.0146765633333, 0.0142746733333, 0.0139178433333, 0.0136284433333, 0.012882572, 0.0113618803333, 0.00992156, 0.0101498076667, 0.0110660993333, 0.0121302806667, 0.0121624393333, 0.010821759, 0.00862912733333, 0.00655863066667, 0.00519224233333, 0.00392876566667, 0.003202159, 0.00245627733333, 0.00201903266667, 0.00173932566667, 0.00167502433333, 0.00133744733333, 0.00123456833333, 0.001292437, 0.00126993366667, 0.00123135166667, 0.00111882666667, 0.00107703333333, 0.00106738666667, 0.000855194666667, 0.000729808, 0.000610854666667, 0.000643005, 0.000501543333333, 0.000469393, 0.000533692666667, 0.000462963, 0.000450102666667, 0.000424382533333, 0.000401877666667, 0.000337577, 0.000372942666667, 0.000392232333333, 0.000340792, 0.000356867333333, 0.000337577333333, 0.0003407922, 0.000292566666667, 0.000347222333333, 0.000376157333333, 0.000344007333333, 0.000295782, 0.000363297333333, 0.000337577, 0.000347222333333, 0.000340792, 0.000295781666667, 0.000263631666667, 0.000244341666667, 0.000289352, 0.000289352, 0.000308642, 0.000266847, 0.000273276666667, 0.000318287, 0.000321502, 0.000337577333333, 0.000282922, 0.000289352, 0.000302212, 0.000295782, 0.000327932, 0.000292566666667, 0.000270061666667, 0.000305427, 0.000276491666667, 0.000270061666667, 0.000308642, 0.000289352, 0.000308642, 0.000382587666667, 0.000279706666667, 0.000289351666667, 0.000282922, 0.000250771666667, 0.000289351666667, 0.000334362333333, 0.000327932, 0.000315072, 0.000372942333333, 0.000472608, 0.000504758, 0.000546553333333, 0.000601209, 0.000665509333333, 0.000752314333333, 0.000932357333333, 0.00117027066667, 0.00170395866667, 0.001112397, 0.00270383233333, 0.000266847
+};
 
 Vision::Vision()
 : saved_angle(-1)
@@ -106,17 +110,19 @@ Vision::~Vision()
         }
 }
 
-int Vision::calcHist(IplImage* img, const char* window_name)
+BASE_TYPE Vision::calcHist(IplImage* img, const char* window_name)
 {
         /* Always check if the program can find a file */
         if( !img )
-        return -1;
+                return BASE_NONE;
 
 
+        IplImage* img_copy = cvCreateImage( cvGetSize(img), img->depth, img->nChannels );
+        cvCopy(img,img_copy);
         IplImage* img_hsv = cvCreateImage( cvGetSize(img), img->depth, img->nChannels );
 
-        IplImage* channel = cvCreateImage( cvGetSize(img), 8, 1 );
-        cvCvtColor(img,img_hsv,CV_BGR2HSV);
+        
+        cvCvtColor(img_copy,img_hsv,CV_BGR2HSV);
 
         IplImage *hist_img_hue = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
         IplImage *hist_img_sat = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
@@ -128,6 +134,8 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         CvHistogram *hist_hue;
         CvHistogram *hist_sat;
         CvHistogram *hist_val;
+        
+        BASE_TYPE ret = BASE_NONE;
         
         int hist_size = 256;      
         float range[]={0,256};
@@ -142,30 +150,43 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         hist_sat = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
         hist_val = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
 
+        std::cout << "crash 1\n";
         /* Set image to obtain RED as Channel of Interest (COI) */
-        cvSetImageCOI(img,1);
-        cvCopy(img,channel);
-        cvResetImageROI(img);
-
+        cvSetImageCOI(img_copy,1);
+        std::cout << "crash 1.1\n";
+        IplImage* channel = cvCreateImage( cvGetSize(img_copy), img_copy->depth, 1 );
+        std::cout << "crash 1.2\n";
+        cvCopy(img_copy,channel);
+        std::cout << "crash 1.3\n";
+        cvResetImageROI(img_copy);
+        std::cout << "crash 2\n";
         /* Calculate histogram of the Image and store it in the array */
         cvCalcHist( &channel, hist_hue, 0, NULL );
+        //for ( int i = 1; i < hist_size; i++ ) { std::cout <<  cvGetReal1D(hist_hue->bins,i) << ' '; }
+        //std::cout << '\n';
         cvNormalizeHist(hist_hue, 1.0);
+        //for ( int i = 1; i < hist_size; i++ ) { std::cout <<  cvGetReal1D(hist_hue->bins,i) << ' '; }
+        //std::cout << '\n';
         //cvNormalize(ImageVal, ImageValNorm, 0, 255, CV_MINMAX);
 
         /* Calculate and Plot the histograms Green and Blue channels as well */
         /* Green channel */
-        cvSetImageCOI(img,2);
-        cvCopy(img,channel);
-        cvResetImageROI(img);
+        std::cout << "crash 3\n";
+        cvSetImageCOI(img_copy,2);
+        cvCopy(img_copy,channel);
+        cvResetImageROI(img_copy);
+        
+        std::cout << "crash 4\n";
 
         cvCalcHist( &channel, hist_sat, 0, NULL );
         cvNormalizeHist(hist_sat, 1.0);
         
         /* Blue channel */
-        cvSetImageCOI(img,3);
-        cvCopy(img,channel);
-        cvResetImageROI(img);
+        cvSetImageCOI(img_copy,3);
+        cvCopy(img_copy,channel);
+        cvResetImageROI(img_copy);
 
+        std::cout << "crash 5\n";
         cvCalcHist( &channel, hist_val, 0, NULL );
         cvNormalizeHist(hist_val, 1.0);
 
@@ -176,14 +197,14 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         max_value = (max > max_value) ? max : max_value;
 
         cvGetMinMaxHistValue( hist_val, 0, &max, 0, 0 );
-
+        std::cout << "crash 6\n";
         max_value = (max > max_value) ? max : max_value;    
         // The variable max_value has the maximum of the three histograms
 
         /* Using the maximum value, Scale/Squeeze the histogram (to fit the image) */
-        cvScale( hist_hue->bins, hist_hue->bins, ((float)hist_img_hue->height)/max_value, 0 );
+        /*cvScale( hist_hue->bins, hist_hue->bins, ((float)hist_img_hue->height)/max_value, 0 );
         cvScale( hist_sat->bins, hist_sat->bins, ((float)hist_img_sat->height)/max_value, 0 );
-        cvScale( hist_val->bins, hist_val->bins, ((float)hist_img_val->height)/max_value, 0 );
+        cvScale( hist_val->bins, hist_val->bins, ((float)hist_img_val->height)/max_value, 0 );*/
 
         //printf("Scale: %4.2f pixels per 100 units\n", max_value*100/((float)hist_img->height));                         
            //A scale to estimate the number of pixels
@@ -200,19 +221,33 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         int bm = 0;
 
         /* Plot the Histograms */
-        bool queenDetected = false;
-        int sum = 0;
-        for( int i = 1; i < hist_size; i++ )
+        double queenSum = 0;
+        double purpleSum = 0;
+        
+        std::cout << "crash 7\n";
+        for( int i = 0; i < 255; i++ )
         {
                       
-                int a = std::max(cvRound(cvGetReal1D(hist_hue->bins,i) - cvGetReal1D(hist_hue_ground->bins,i)), 0);
+                double a = cvGetReal1D(hist_hue->bins,i) - cvGetReal1D(hist_hue_ground->bins,i);
+                std::cout << a << ' ';                
                 
-                if (queenHist[i] > 5)
+                if (queenHist[i] > 0.01)
                 {
-                        float result = (float)a - queenHist[i];
-                        sum += result;
+                        double result = a - queenHist[i];
+
+                        //std::cout << cvGetReal1D(hist_hue->bins,i)  << ' ' << cvGetReal1D(hist_hue_ground->bins,i) << ' ' << queenHist[i] << ' ' << result << '\n';
+                        queenSum += result;
+                        
                 }        
-                
+                if (purpleHist[i] > 0.01)
+                {
+                        double result = a - purpleHist[i];
+
+                        //std::cout << cvGetReal1D(hist_hue->bins,i)  << ' ' << cvGetReal1D(hist_hue_ground->bins,i) << ' ' << queenHist[i] << ' ' << result << '\n';
+                        purpleSum += result;
+                        
+                }        
+                /*
                 cvRectangle( hist_img_hue, cvPoint((int)i*w_scale , hist_img_hue->height),
                 cvPoint((int)(i+1)*w_scale, hist_img_hue->height - a),
                 CV_RGB(255,0,0), -1, 8, 0 );
@@ -226,18 +261,30 @@ int Vision::calcHist(IplImage* img, const char* window_name)
                 int c = std::max(cvRound(cvGetReal1D(hist_val->bins,i) - cvGetReal1D(hist_val_ground->bins,i)), 0);
                 cvRectangle( hist_img_val, cvPoint((int)i*w_scale , hist_img_val->height),
                 cvPoint((int)(i+1)*w_scale, hist_img_val->height - c),
-                CV_RGB(0,0,255), -1, 8, 0 );
+                CV_RGB(0,0,255), -1, 8, 0 );*/
         }
-        //std::cout << '\n';
+        std::cout << '\n';
         
-        std::cout << "queen: " << sum << '\n';
+        std::cout << "queen: " << queenSum << '\n';
+        std::cout << "purple: " << purpleSum << '\n';
         
-        if (queenDetected)
-                std::cout << "Queen detected!\n";
+        if (-1.1 <= queenSum && queenSum <= -0.85 && purpleSum <= -0.19)
+        {
+                std::cout << "!!!!! QUEEN !!!!!!!!!\n";
+                ret = BASE_QUEEN;
+        }
+        else if (-1.5 <= queenSum && queenSum <= -1.0 && purpleSum <= 0.20)
+        {
+                std::cout << "!!!!! PURPLE :O !!!!!!!!!\n";
+                ret = BASE_PURPLE;
+        }
+       
 
-        cvShowImage(hist_window_1, hist_img_hue);
+        
+        
+        /*cvShowImage(hist_window_1, hist_img_hue);
         cvShowImage(hist_window_2, hist_img_sat);
-        cvShowImage(hist_window_3, hist_img_val);
+        cvShowImage(hist_window_3, hist_img_val);*/
         
         /*
         cvNamedWindow( "Image", 1 );
@@ -254,12 +301,13 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         //std::cout << "max r: " << Rmax << " g: " << Gmax << " b: " << Bmax << '\n';
         //std::cout << "max r: " << rm << " g: " << gm << " b: " << bm << '\n';
 
+        cvReleaseImage( &img_copy );        
         cvReleaseImage( &img_hsv );        
         cvReleaseImage( &hist_img_val );
         cvReleaseImage( &hist_img_sat );
         cvReleaseImage( &hist_img_hue );
         cvReleaseImage( &channel );
-        return 0;
+        return ret;
 }
 
 
@@ -818,9 +866,9 @@ BoxDetectionResult Vision::detectBoxes()
 void Vision::initSift()
 {
 
-        image_names.push_back("walle.png");
+        //image_names.push_back("walle.png");
         //keypoint_match_count.push_back(0);
-        keypoint_match_count.push_back(20);
+        //keypoint_match_count.push_back(20);
 //        image_names.push_back("ferrari.png");
 //        keypoint_match_count.push_back(7);
 //        image_names.push_back("celebes.png");
@@ -835,8 +883,8 @@ void Vision::initSift()
 //        keypoint_match_count.push_back(11);
 //        image_names.push_back("starry.png");
 //        keypoint_match_count.push_back(11);
-//        image_names.push_back("thor.png");
-//        keypoint_match_count.push_back(11);
+        image_names.push_back("thor.png");
+        keypoint_match_count.push_back(11);
 
 
         base_image_names.push_back("base1.png");
@@ -1025,8 +1073,7 @@ void* Vision::cameraThread(void* Param)
                 else
                 {        
                         orig_small = small_size_camera_image(orig);
-                        calcHist(src_base, "Histogram2");
-                        calcHist(orig, "Histogram");
+                        //calcHist(src_base, "Histogram2");
                         origReady = true;
                 }
                 if (windowsEnabled) cvShowImage("mywindow8", orig);
@@ -1167,21 +1214,26 @@ void* Vision::baseThread(void* Param)
                                 c3 /= 100;
 
                                 std::cout << c1 << "," << c2 << "," << c3 << std::endl;
-
+                                
+                                baseType = BASE_NONE;
                                 if (160 <= c3 && c3 <= 195 &&
                                     130 <= c2 && c2 <= 165 &&
                                     100 <= c1 && c1 <= 130)
                                 {
-                                        releaseBox = true;
                                         baseType = BASE_QUEEN;
                                 }
-                                /*else if (108 <= c3 && c3 <= 152 &&
+                                else if (108 <= c3 && c3 <= 152 &&
                                          108 <= c2 && c2 <= 152 &&
                                          108 <= c1 && c1 <= 152)
                                 {
-                                        canReleaseBox = true;
-                                        baseType = BASE_GREY;
-                                } */
+                                        baseType = BASE_PURPLE;
+                                }
+                                BASE_TYPE histType = calcHist(orig, "Histogram");
+                                if (baseType != BASE_NONE && baseType == histType)
+                                {
+                                        releaseBox = true;
+                                        std::cout << "Detected: " << baseType << ", " << histType << '\n';
+                                }
                         }
                         //if (windowsEnabled) imshow( "mywindow8", contourDrawing2 );
                         //if (windowsEnabled) imshow( "mywindow10", orig_small_copy );
