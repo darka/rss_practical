@@ -17,5 +17,11 @@ edge_detection.o: edge_detection.cpp
 edge_detection: edge_detection.o 
 	g++ -o edge_detection edge_detection.o -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d -O3
 	
+hist.o: hist.cpp
+	g++ -c hist.cpp -o hist.o -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lphidget21 -lopencv_calib3d -lopencv_features2d
+
+hist: hist.o 
+	g++ -o hist hist.o -lphidget21  -lopencv_core -lopencv_video -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_features2d
+	
 clean:
-	rm -rf Surf sift edge_detection
+	rm -rf Surf sift edge_detection hist

@@ -96,7 +96,11 @@ public:
     void static disableBaseDetection() { runBaseDetection = false; }
 
     bool static canReleaseBox() { return releaseBox; }
-
+    
+    void static matchBase(cv::Mat const& src_test);
+    int static calcHist(IplImage* img, const char* window_name);
+    int static calcHistGround();
+    
     static CvCapture* capture;
     static BASE_TYPE  baseType;
     static IplImage* orig;
@@ -143,10 +147,14 @@ public:
     std::vector< std::string>                   base_image_names;
     std::vector< std::vector<cv::KeyPoint>* >   base_sift_keypoints;
     std::vector< cv::Mat >                      base_sift_descriptors;
-
+    static IplImage* src_base;    
     int odv[Vision::CAMERA_WIDTH];
     int boxVec[Vision::CAMERA_WIDTH];
 
+    static CvHistogram* hist_hue_ground;
+    static CvHistogram* hist_sat_ground;
+    static CvHistogram* hist_val_ground;
+        
     static const bool windowsEnabled = true;
 };
 

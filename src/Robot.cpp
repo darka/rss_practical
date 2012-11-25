@@ -178,7 +178,7 @@ void Robot::run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdC
         size_t beginMax = moveableLine.first;
         size_t endMax = moveableLine.second;
         size_t distanceMax = moveableLine.second - moveableLine.first;
-        std::cout << beginMax << ", " << endMax << ", " << distanceMax << '\n';
+        //std::cout << beginMax << ", " << endMax << ", " << distanceMax << '\n';
 
         // centre of the line
         double movement_angle = 0;

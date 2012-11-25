@@ -1,4 +1,5 @@
 #include "Vision.hpp"
+#include <algorithm>
 
 using namespace cv;
 
@@ -12,12 +13,19 @@ bool Vision::runBaseDetection = false;
 bool Vision::releaseBox = false;
 int Vision::baseCenterX = 0;
 int Vision::baseCenterY = 0;
+IplImage* Vision::src_base = cvLoadImage("base2.png");
+
+CvHistogram* Vision::hist_hue_ground = NULL;
+CvHistogram* Vision::hist_sat_ground = NULL;
+CvHistogram* Vision::hist_val_ground = NULL;
 
 Vision::Vision()
 : saved_angle(-1)
 , correct_box(false)
 {
+        
         initSift();
+        calcHistGround();
 
 	//printf("Starting threads...\n");
         
@@ -45,9 +53,12 @@ Vision::Vision()
                 //cvNamedWindow( "mywindow5", CV_WINDOW_AUTOSIZE );
                 cvNamedWindow( "mywindow6", CV_WINDOW_NORMAL );
                 cvNamedWindow( "mywindow7", CV_WINDOW_NORMAL );
-                cvNamedWindow( "mywindow8", CV_WINDOW_NORMAL );
-                //cvNamedWindow( "mywindow9", CV_WINDOW_AUTOSIZE );
+                cvNamedWindow( "mywindow8", CV_WINDOW_AUTOSIZE );
+                cvNamedWindow( "mywindow9", CV_WINDOW_AUTOSIZE );
                 cvNamedWindow( "mywindow10", CV_WINDOW_NORMAL );                
+
+                cvNamedWindow("Histogram", CV_WINDOW_NORMAL);
+                cvNamedWindow("Histogram2", CV_WINDOW_NORMAL);
                 
                 cvMoveWindow("mywindow", 0, 20);
                 //cvMoveWindow("mywindow2", 400, 20);
@@ -57,8 +68,9 @@ Vision::Vision()
                 cvMoveWindow("mywindow5", 800, 320);
                 cvMoveWindow("mywindow6", 0, 620);
                 cvMoveWindow("mywindow8", 800, 620);
-                //cvMoveWindow("mywindow9", 600, 620);
+                cvMoveWindow("mywindow9", 600, 620);
                 cvMoveWindow("mywindow10", 600, 620);
+                namedWindow("calcHist Demo", CV_WINDOW_AUTOSIZE );
         }
 
 }
@@ -68,6 +80,8 @@ Vision::~Vision()
         cvReleaseCapture( &capture );
         if (windowsEnabled) 
         {
+                cvDestroyWindow( "Histogram" );
+                cvDestroyWindow( "Histogram2" );
                 cvDestroyWindow( "mywindow" );
                 cvDestroyWindow( "mywindow2" );
                 cvDestroyWindow( "mywindow3" );
@@ -80,6 +94,326 @@ Vision::~Vision()
         }
 }
 
+int Vision::calcHist(IplImage* img, const char* window_name)
+{
+        /* Always check if the program can find a file */
+        if( !img )
+        return -1;
+
+        std::cout << "hi! 1\n";
+        IplImage* img_hsv = cvCreateImage( cvGetSize(img), img->depth, img->nChannels );
+        std::cout << "hi! 2\n";
+        IplImage* channel = cvCreateImage( cvGetSize(img), 8, 1 );
+        cvCvtColor(img,img_hsv,CV_BGR2HSV);
+        std::cout << "hi! 3\n";
+        IplImage *hist_img = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
+        cvSet( hist_img, cvScalarAll(255), 0 );
+        std::cout << "hi! 4\n";
+        CvHistogram *hist_hue;
+        CvHistogram *hist_sat;
+        CvHistogram *hist_val;
+        
+        int hist_size = 256;      
+        float range[]={0,256};
+        float* ranges[] = { range };
+
+        float max_value = 0.0;
+        float max = 0.0;
+        float w_scale = 0.0;
+
+        std::cout << "hi! 5\n";
+
+        /* Create a 1-D Arrays to hold the histograms */
+        hist_hue = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
+        hist_sat = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
+        hist_val = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
+        std::cout << "hi! 6\n";
+        /* Set image to obtain RED as Channel of Interest (COI) */
+        cvSetImageCOI(img,1);
+        cvCopy(img,channel);
+        cvResetImageROI(img);
+        std::cout << "hi! 7\n";
+        /* Calculate histogram of the Image and store it in the array */
+        cvCalcHist( &channel, hist_hue, 0, NULL );
+        cvNormalizeHist(hist_hue, 1.0);
+        //cvNormalize(ImageVal, ImageValNorm, 0, 255, CV_MINMAX);
+        std::cout << "hi! 8\n";
+        /* Calculate and Plot the histograms Green and Blue channels as well */
+        /* Green channel */
+        cvSetImageCOI(img,2);
+        cvCopy(img,channel);
+        cvResetImageROI(img);
+        std::cout << "hi! 9\n";
+        cvCalcHist( &channel, hist_sat, 0, NULL );
+        cvNormalizeHist(hist_sat, 1.0);
+        
+        /* Blue channel */
+        cvSetImageCOI(img,3);
+        cvCopy(img,channel);
+        cvResetImageROI(img);
+        std::cout << "hi! 10\n";
+        cvCalcHist( &channel, hist_val, 0, NULL );
+        cvNormalizeHist(hist_val, 1.0);
+
+        /* Find the minimum and maximum values of the histograms */
+        cvGetMinMaxHistValue( hist_hue, 0, &max_value, 0, 0 );
+        cvGetMinMaxHistValue( hist_sat, 0, &max, 0, 0 );
+
+        max_value = (max > max_value) ? max : max_value;
+
+        cvGetMinMaxHistValue( hist_val, 0, &max, 0, 0 );
+
+        max_value = (max > max_value) ? max : max_value;    
+        // The variable max_value has the maximum of the three histograms
+
+        /* Using the maximum value, Scale/Squeeze the histogram (to fit the image) */
+        cvScale( hist_hue->bins, hist_hue->bins, ((float)hist_img->height)/max_value, 0 );
+        cvScale( hist_sat->bins, hist_sat->bins, ((float)hist_img->height)/max_value, 0 );
+        cvScale( hist_val->bins, hist_val->bins, ((float)hist_img->height)/max_value, 0 );
+
+        printf("Scale: %4.2f pixels per 100 units\n", max_value*100/((float)hist_img->height));                         
+           //A scale to estimate the number of pixels
+
+        /* Scale/Squeeze the histogram range to image width */
+        w_scale = ((float)hist_img->width)/hist_size;
+        
+        int Rmax = 0;//hist_img->height+1;
+        int Gmax = 0;//hist_img->height+1;
+        int Bmax = 0;//hist_img->height+1;
+        
+        int rm = 0;
+        int gm = 0;
+        int bm = 0;
+
+        /* Plot the Histograms */
+        for( int i = 1; i < hist_size; i++ )
+        {
+                      
+                int a = std::max(cvRound(cvGetReal1D(hist_hue->bins,i) - cvGetReal1D(hist_hue_ground->bins,i)), 0);
+                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
+                cvPoint((int)(i+1)*w_scale, hist_img->height - a),
+                CV_RGB(255,0,0), -1, 8, 0 );
+                
+                //std::cout << "x: " << ((int)(i+1)*w_scale) << ", y: " << (hist_img->height - cvRound(cvGetReal1D(hist_hue->bins,i))) <<'\n';
+                int b = std::max(cvRound(cvGetReal1D(hist_sat->bins,i) - cvGetReal1D(hist_sat_ground->bins,i)), 0);
+                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
+                cvPoint((int)(i+1)*w_scale, hist_img->height - b),
+                CV_RGB(0,255,0), -1, 8, 0 );
+                
+                int c = std::max(cvRound(cvGetReal1D(hist_val->bins,i) - cvGetReal1D(hist_val_ground->bins,i)), 0);
+                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
+                cvPoint((int)(i+1)*w_scale, hist_img->height - c),
+                CV_RGB(0,0,255), -1, 8, 0 );
+        }
+
+        cvShowImage(window_name, hist_img);
+        
+        /*
+        cvNamedWindow( "Image", 1 );
+        cvShowImage( "Image",img);
+
+
+
+        cvWaitKey(0);
+
+        cvDestroyWindow( "Image" );
+        cvDestroyWindow( "Histogram" );
+        cvReleaseImage( &img );
+        */
+        //std::cout << "max r: " << Rmax << " g: " << Gmax << " b: " << Bmax << '\n';
+        //std::cout << "max r: " << rm << " g: " << gm << " b: " << bm << '\n';
+
+        cvReleaseImage( &img_hsv );        
+        cvReleaseImage( &hist_img );
+        cvReleaseImage( &channel );
+        return 0;
+}
+
+
+int Vision::calcHistGround()
+{
+        /* Always check if the program can find a file */
+
+
+        std::cout << "hi! 1\n";
+        IplImage* img = cvLoadImage("ground.png");
+        if( !img )
+        return -1;
+        IplImage* img_hsv = cvCreateImage( cvGetSize(img), img->depth, img->nChannels );
+        std::cout << "hi! 2\n";
+        IplImage* channel = cvCreateImage( cvGetSize(img), 8, 1 );
+        cvCvtColor(img,img_hsv,CV_BGR2HSV);
+        std::cout << "hi! 3\n";
+        IplImage *hist_img = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
+        cvSet( hist_img, cvScalarAll(255), 0 );
+        std::cout << "hi! 4\n";
+        
+        int hist_size = 256;      
+        float range[]={0,256};
+        float* ranges[] = { range };
+
+        float max_value = 0.0;
+        float max = 0.0;
+        float w_scale = 0.0;
+
+        std::cout << "hi! 5\n";
+
+        /* Create a 1-D Arrays to hold the histograms */
+        hist_hue_ground = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
+        hist_sat_ground = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
+        hist_val_ground = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
+        std::cout << "hi! 6\n";
+        /* Set image to obtain RED as Channel of Interest (COI) */
+        cvSetImageCOI(img,1);
+        cvCopy(img,channel);
+        cvResetImageROI(img);
+        std::cout << "hi! 7\n";
+        /* Calculate histogram of the Image and store it in the array */
+        cvCalcHist( &channel, hist_hue_ground, 0, NULL );
+        cvNormalizeHist(hist_hue_ground, 1.0);
+        //cvNormalize(ImageVal, ImageValNorm, 0, 255, CV_MINMAX);
+        std::cout << "hi! 8\n";
+        /* Calculate and Plot the histograms Green and Blue channels as well */
+        /* Green channel */
+        cvSetImageCOI(img,2);
+        cvCopy(img,channel);
+        cvResetImageROI(img);
+        std::cout << "hi! 9\n";
+        cvCalcHist( &channel, hist_sat_ground, 0, NULL );
+        cvNormalizeHist(hist_sat_ground, 1.0);
+        
+        /* Blue channel */
+        cvSetImageCOI(img,3);
+        cvCopy(img,channel);
+        cvResetImageROI(img);
+        std::cout << "hi! 10\n";
+        cvCalcHist( &channel, hist_val_ground, 0, NULL );
+        cvNormalizeHist(hist_val_ground, 1.0);
+
+        /* Plot the Histograms */
+        /*for( int i = 1; i < hist_size; i++ )
+        {
+                if (Rmax < cvRound(cvGetReal1D(hist_hue->bins,i)) ){
+                        rm = i;
+                        Rmax = cvRound(cvGetReal1D(hist_hue->bins,i));
+                        //std::cout<< "rmax " << cvRound(cvGetReal1D(hist_hue->bins,i)) << " i: " << i <<std::endl;
+                }
+                
+                if (Gmax < cvRound(cvGetReal1D(hist_sat->bins,i)) ){
+                        gm = i;
+                        Gmax = cvRound(cvGetReal1D(hist_sat->bins,i));
+                        //std::cout<< "gmax " << cvRound(cvGetReal1D(hist_sat->bins,i)) << " i: " << i <<std::endl;
+                }
+                
+                if (Bmax < cvRound(cvGetReal1D(hist_val->bins,i)) ){
+                        bm = i;
+                        Bmax = cvRound(cvGetReal1D(hist_val->bins,i));
+                        //std::cout<< "bmax " << cvRound(cvGetReal1D(hist_val->bins,i)) << " i: " << i <<std::endl;
+                }
+        
+                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
+                cvPoint((int)(i+1)*w_scale, hist_img->height - cvRound(cvGetReal1D(hist_hue->bins,i))),
+                CV_RGB(255,0,0), -1, 8, 0 );
+                
+                //std::cout << "x: " << ((int)(i+1)*w_scale) << ", y: " << (hist_img->height - cvRound(cvGetReal1D(hist_hue->bins,i))) <<'\n';
+                
+                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
+                cvPoint((int)(i+1)*w_scale, hist_img->height - cvRound(cvGetReal1D(hist_sat->bins,i))),
+                CV_RGB(0,255,0), -1, 8, 0 );
+                
+                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
+                cvPoint((int)(i+1)*w_scale, hist_img->height - cvRound(cvGetReal1D(hist_val->bins,i))),
+                CV_RGB(0,0,255), -1, 8, 0 );
+        }*/
+
+        //cvShowImage(window_name, hist_img);
+        
+        /*
+        cvNamedWindow( "Image", 1 );
+        cvShowImage( "Image",img);
+
+
+
+        cvWaitKey(0);
+
+        cvDestroyWindow( "Image" );
+        cvDestroyWindow( "Histogram" );
+        cvReleaseImage( &img );
+        */
+        //std::cout << "max r: " << Rmax << " g: " << Gmax << " b: " << Bmax << '\n';
+        //std::cout << "max r: " << rm << " g: " << gm << " b: " << bm << '\n';
+
+        cvReleaseImage( &img_hsv );        
+        cvReleaseImage( &img );    
+        cvReleaseImage( &hist_img );
+        cvReleaseImage( &channel );
+        return 0;
+}
+
+/*
+void Vision::matchBase(cv::Mat const& src_test)
+{
+        Mat hsv_base;
+        Mat hsv_test;
+        Mat hsv_test_down;
+
+        //cv::Rect myROI(120, 40, 400, 400);
+
+        //cv::Mat cropped_src_test = src_test(myROI);
+        /// Convert to HSV
+        cvtColor( src_base, hsv_base, CV_BGR2HSV );
+        cvtColor( src_test, hsv_test, CV_BGR2HSV );
+        //hsv_test_down = hsv_test( Range( hsv_test.rows/2, hsv_test.rows - 1 ), Range( 0, hsv_test.cols - 1 ) );
+
+        /// Using 30 bins for hue and 32 for saturation
+        int h_bins = 50; int s_bins = 60;
+        int histSize[] = { h_bins };
+
+        // hue varies from 0 to 256, saturation from 0 to 180
+        float h_ranges[] = { 0, 256 };
+        float s_ranges[] = { 0, 180 };
+
+        const float* ranges[] = { h_ranges };
+
+        // Use the o-th and 1-st channels
+        int channels[] = { 0 };
+
+        /// Histograms
+        MatND hist_base;
+        MatND hist_test;
+
+        /// Calculate the histograms for the HSV images
+        std::cout << "debug 1\n";
+        calcHist( &hsv_base, 1, channels, Mat(), hist_base, 1, histSize, ranges, true, false );
+        normalize( hist_base, hist_base, 0, 1, NORM_MINMAX, -1, Mat() );
+        std::cout << "debug 2\n";
+        //calcHist( &hsv_test, 1, channels, Mat(), hist_test, 2, histSize, ranges, true, false );
+        //normalize( hist_test, hist_test, 0, 1, NORM_MINMAX, -1, Mat() );
+        std::cout << "debug 3\n";
+        /// Apply the histogram comparison methods
+        for( int i = 0; i < 4; i++ )
+        { 
+                int compare_method = i;
+                double base_base = compareHist( hist_base, hist_base, compare_method );
+                //double base_test = compareHist( hist_test, hist_base, compare_method );
+
+                printf( " Method [%d]  : %f \n", i, base_base);
+        }
+        std::cout << "debug 4\n";
+        int hist_w = 512; int hist_h = 400;
+        int bin_w = cvRound( (double) hist_w/h_bins );
+        Mat histImage( hist_h, hist_w, CV_8UC3, Scalar( 0,0,0) );
+        for( int i = 1; i < h_bins; i++ )
+        {
+                line( histImage, Point( bin_w*(i-1), hist_h - cvRound(hist_base.at<float>(i-1)) ) ,
+                                Point( bin_w*(i), hist_h - cvRound(hist_base.at<float>(i)) ),
+                                Scalar( 255, 0, 0), 2, 8, 0  );
+        }
+
+        imshow("calcHist Demo", histImage );
+        printf( "Done \n" );
+}
+*/
 void Vision::update()
 {
         IplImage* prepared = cvCreateImage(cvSize(orig_small->width,orig_small->height),IPL_DEPTH_8U, orig_small->nChannels);
@@ -115,7 +449,7 @@ bool Vision::inRange(unsigned char red,
 {
     // CALCULATES IF RGB VALUE OF PIXEL IS IN SPECIFIED RANGE
     //
-    // INPUT:   RGB-VALUE OF PIXEL AND RANGE
+    // INPUT:   RGB-VALUE OF PIXEL AND RANGEhist_test
     // OUTPUT:  TRUE OR FALSE
 
     const char diffRange = 14;
@@ -248,7 +582,7 @@ BoxDetectionResult Vision::detectBoxes()
         IplImage* frameHD = orig;
         const int BoxROIError = 65;
 
-        if (windowsEnabled) cvShowImage("mywindow6", frame);
+        //if (windowsEnabled) cvShowImage("mywindow6", frame);
 
         BoxDetectionResult ret;
         IplImage* gray2;
@@ -420,7 +754,8 @@ BoxDetectionResult Vision::detectBoxes()
 
 
         Mat& drawingScaled = drawing;
-
+        imshow("mywindow9", drawing);
+        
         std::memset(boxVec, 0, sizeof(int)*drawingScaled.cols);
 
         for (int i = 0; i < drawingScaled.rows; i++)
@@ -452,7 +787,7 @@ void Vision::initSift()
 
         image_names.push_back("walle.png");
         //keypoint_match_count.push_back(0);
-        keypoint_match_count.push_back(11);
+        keypoint_match_count.push_back(20);
 //        image_names.push_back("ferrari.png");
 //        keypoint_match_count.push_back(7);
 //        image_names.push_back("celebes.png");
@@ -487,7 +822,7 @@ void Vision::initSift()
                 sift_descriptors.push_back(descriptors_image);
                 std::cout << "Keypoints: " << sift_keypoints[i]->size() << '\n';
 
-                imshow("mywindow6", input);
+                //imshow("mywindow6", input);
                 std::cout << "Hi there.\n";
         }
 }
@@ -654,8 +989,13 @@ void* Vision::cameraThread(void* Param)
                 orig = grabFrame();
                 if (orig == NULL)
                         std::cout << "Camera frame empty\n";
-                orig_small = small_size_camera_image(orig);
-                origReady = true;
+                else
+                {        
+                        orig_small = small_size_camera_image(orig);
+                        calcHist(src_base, "Histogram2");
+                        calcHist(orig, "Histogram");
+                        origReady = true;
+                }
                 if (windowsEnabled) cvShowImage("mywindow8", orig);
                 if ( (cvWaitKey(10) & 255) == 27 ) break;
         }
@@ -742,7 +1082,7 @@ void* Vision::baseThread(void* Param)
                         Mat contourDrawing2 = Mat::zeros( detected_edges.size(), CV_8UC1 );
 
 
-                        for( int i = 0; i< bases.size(); i++ )
+                        for( int i = 0; i < bases.size(); i++ )
                         {
                                 Scalar color = Scalar( 255, 255, 255 );
                                 drawContours( contourDrawing2, bases, i, color, CV_FILLED, 8, hierarchy, 0, Point(0,0) );
