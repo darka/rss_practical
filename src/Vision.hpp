@@ -138,6 +138,10 @@ public:
     static const int  W4 = 9;
     static const int  W5 = 2;
 
+    static const char* hist_window_1;
+    static const char* hist_window_2;
+    static const char* hist_window_3;
+   
     std::vector< std::vector<cv::KeyPoint>* >   sift_keypoints;
     std::vector< int >                          keypoint_match_count;
     std::vector< cv::Mat >                      sift_descriptors;
@@ -156,6 +160,9 @@ public:
     static CvHistogram* hist_val_ground;
         
     static const bool windowsEnabled = true;
+    
+    const static float queenHist[];
+    
 };
 
 #endif // VISION_HPP

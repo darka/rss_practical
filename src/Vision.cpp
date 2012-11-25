@@ -19,6 +19,13 @@ CvHistogram* Vision::hist_hue_ground = NULL;
 CvHistogram* Vision::hist_sat_ground = NULL;
 CvHistogram* Vision::hist_val_ground = NULL;
 
+const char* Vision::hist_window_1 = "hist1";
+const char* Vision::hist_window_2 = "hist2";
+const char* Vision::hist_window_3 = "hist3";
+    
+const float Vision::queenHist[] = {
+ 0.5, 0.75, 1.0, 1.0, 1.25, 1.75, 1.5, 1.75, 2.25, 2.25, 2.25, 1.75, 1.75, 1.5, 1.5, 1.0, 1.0, 1.0, 1.25, 1.0, 0.75, 0.75, 0.75, 0.5, 0.0, 0.0, 0.5, 0.75, 0.5, 0.25, 0.5, 0.5, 0.5, 0.5, 0.75, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.75, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.25, 1.5, 2.0, 2.25, 2.75, 3.5, 4.0, 4.5, 5.5, 5.75, 6.5, 7.75, 8.5, 10.0, 10.0, 10.75, 11.25, 12.75, 13.5, 13.75, 13.75, 12.75, 13.0, 12.25, 12.25, 11.5, 11.25, 11.25, 11.5, 11.5, 11.5, 12.0, 12.25, 11.5, 12.25, 12.25, 12.75, 12.5, 12.0, 11.0, 11.0, 11.25, 11.0, 12.0, 12.25, 12.75, 14.5, 15.0, 15.75, 17.0, 17.75, 17.25, 18.25, 19.75, 22.0, 24.25, 25.5, 27.25, 28.5, 30.25, 31.5, 33.25, 35.75, 38.25, 39.25, 39.75, 43.25, 49.25, 49.75, 51.25, 52.75, 55.0, 50.25, 50.5, 44.0, 41.0, 36.5, 34.0, 30.75, 28.75, 25.75, 24.25, 21.5, 20.5, 18.25, 17.0, 15.75, 14.25, 14.0, 12.5, 10.75, 8.75, 8.5, 7.25, 6.5, 5.75, 5.5, 5.25, 5.5, 5.5, 4.25, 3.75, 3.0, 2.5, 2.25, 1.75, 1.75, 2.0, 1.75, 2.0, 2.0, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.25, 2.0, 2.25, 2.25, 2.0, 1.75, 2.0, 2.0, 2.0, 1.75, 1.75, 2.0, 2.0, 2.5, 1.75, 2.25, 2.25, 2.25, 2.0, 2.25, 2.0, 1.75, 2.0, 2.0, 2.0, 1.75, 1.75, 1.5, 1.5, 1.5, 1.5, 1.5, 1.75, 1.5, 1.5, 1.0, 1.5, 1.25, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.0, 1.0, 1.0, 1.0, 0.75, 0.75, 0.75, 0.75, 0.75, 0.5, 0.5, 0.5, 0.5, 0.5, 0.25, 0.5 };
+
 Vision::Vision()
 : saved_angle(-1)
 , correct_box(false)
@@ -38,13 +45,7 @@ Vision::Vision()
 	int id2 = 2;
         
 	// Start thread
-	pthread_create(&thread1, NULL, cameraThread, (void*)&id1);
-	pthread_create(&thread2, NULL, baseThread, (void*)&id2);
 
-	while (!origReady) 
-        { 
-                std::cout << "waiting for camera thread...\n"; 
-        }
 
         if (windowsEnabled)
         {
@@ -60,6 +61,10 @@ Vision::Vision()
                 cvNamedWindow("Histogram", CV_WINDOW_NORMAL);
                 cvNamedWindow("Histogram2", CV_WINDOW_NORMAL);
                 
+                cvNamedWindow(hist_window_1, CV_WINDOW_NORMAL);
+                cvNamedWindow(hist_window_2, CV_WINDOW_NORMAL);
+                cvNamedWindow(hist_window_3, CV_WINDOW_NORMAL);
+                
                 cvMoveWindow("mywindow", 0, 20);
                 //cvMoveWindow("mywindow2", 400, 20);
                 cvMoveWindow("mywindow3", 800, 20);
@@ -71,6 +76,13 @@ Vision::Vision()
                 cvMoveWindow("mywindow9", 600, 620);
                 cvMoveWindow("mywindow10", 600, 620);
                 namedWindow("calcHist Demo", CV_WINDOW_AUTOSIZE );
+        }
+	pthread_create(&thread1, NULL, cameraThread, (void*)&id1);
+	pthread_create(&thread2, NULL, baseThread, (void*)&id2);
+
+	while (!origReady) 
+        { 
+                std::cout << "waiting for camera thread...\n"; 
         }
 
 }
@@ -100,15 +112,19 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         if( !img )
         return -1;
 
-        std::cout << "hi! 1\n";
+
         IplImage* img_hsv = cvCreateImage( cvGetSize(img), img->depth, img->nChannels );
-        std::cout << "hi! 2\n";
+
         IplImage* channel = cvCreateImage( cvGetSize(img), 8, 1 );
         cvCvtColor(img,img_hsv,CV_BGR2HSV);
-        std::cout << "hi! 3\n";
-        IplImage *hist_img = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
-        cvSet( hist_img, cvScalarAll(255), 0 );
-        std::cout << "hi! 4\n";
+
+        IplImage *hist_img_hue = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
+        IplImage *hist_img_sat = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
+        IplImage *hist_img_val = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
+        cvSet( hist_img_hue, cvScalarAll(255), 0 );
+        cvSet( hist_img_sat, cvScalarAll(255), 0 );
+        cvSet( hist_img_val, cvScalarAll(255), 0 );
+
         CvHistogram *hist_hue;
         CvHistogram *hist_sat;
         CvHistogram *hist_val;
@@ -121,29 +137,27 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         float max = 0.0;
         float w_scale = 0.0;
 
-        std::cout << "hi! 5\n";
-
         /* Create a 1-D Arrays to hold the histograms */
         hist_hue = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
         hist_sat = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
         hist_val = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
-        std::cout << "hi! 6\n";
+
         /* Set image to obtain RED as Channel of Interest (COI) */
         cvSetImageCOI(img,1);
         cvCopy(img,channel);
         cvResetImageROI(img);
-        std::cout << "hi! 7\n";
+
         /* Calculate histogram of the Image and store it in the array */
         cvCalcHist( &channel, hist_hue, 0, NULL );
         cvNormalizeHist(hist_hue, 1.0);
         //cvNormalize(ImageVal, ImageValNorm, 0, 255, CV_MINMAX);
-        std::cout << "hi! 8\n";
+
         /* Calculate and Plot the histograms Green and Blue channels as well */
         /* Green channel */
         cvSetImageCOI(img,2);
         cvCopy(img,channel);
         cvResetImageROI(img);
-        std::cout << "hi! 9\n";
+
         cvCalcHist( &channel, hist_sat, 0, NULL );
         cvNormalizeHist(hist_sat, 1.0);
         
@@ -151,7 +165,7 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         cvSetImageCOI(img,3);
         cvCopy(img,channel);
         cvResetImageROI(img);
-        std::cout << "hi! 10\n";
+
         cvCalcHist( &channel, hist_val, 0, NULL );
         cvNormalizeHist(hist_val, 1.0);
 
@@ -167,15 +181,15 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         // The variable max_value has the maximum of the three histograms
 
         /* Using the maximum value, Scale/Squeeze the histogram (to fit the image) */
-        cvScale( hist_hue->bins, hist_hue->bins, ((float)hist_img->height)/max_value, 0 );
-        cvScale( hist_sat->bins, hist_sat->bins, ((float)hist_img->height)/max_value, 0 );
-        cvScale( hist_val->bins, hist_val->bins, ((float)hist_img->height)/max_value, 0 );
+        cvScale( hist_hue->bins, hist_hue->bins, ((float)hist_img_hue->height)/max_value, 0 );
+        cvScale( hist_sat->bins, hist_sat->bins, ((float)hist_img_sat->height)/max_value, 0 );
+        cvScale( hist_val->bins, hist_val->bins, ((float)hist_img_val->height)/max_value, 0 );
 
-        printf("Scale: %4.2f pixels per 100 units\n", max_value*100/((float)hist_img->height));                         
+        //printf("Scale: %4.2f pixels per 100 units\n", max_value*100/((float)hist_img->height));                         
            //A scale to estimate the number of pixels
 
         /* Scale/Squeeze the histogram range to image width */
-        w_scale = ((float)hist_img->width)/hist_size;
+        w_scale = ((float)hist_img_hue->width)/hist_size;
         
         int Rmax = 0;//hist_img->height+1;
         int Gmax = 0;//hist_img->height+1;
@@ -186,27 +200,44 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         int bm = 0;
 
         /* Plot the Histograms */
+        bool queenDetected = false;
+        int sum = 0;
         for( int i = 1; i < hist_size; i++ )
         {
                       
                 int a = std::max(cvRound(cvGetReal1D(hist_hue->bins,i) - cvGetReal1D(hist_hue_ground->bins,i)), 0);
-                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
-                cvPoint((int)(i+1)*w_scale, hist_img->height - a),
+                
+                if (queenHist[i] > 5)
+                {
+                        float result = (float)a - queenHist[i];
+                        sum += result;
+                }        
+                
+                cvRectangle( hist_img_hue, cvPoint((int)i*w_scale , hist_img_hue->height),
+                cvPoint((int)(i+1)*w_scale, hist_img_hue->height - a),
                 CV_RGB(255,0,0), -1, 8, 0 );
                 
                 //std::cout << "x: " << ((int)(i+1)*w_scale) << ", y: " << (hist_img->height - cvRound(cvGetReal1D(hist_hue->bins,i))) <<'\n';
                 int b = std::max(cvRound(cvGetReal1D(hist_sat->bins,i) - cvGetReal1D(hist_sat_ground->bins,i)), 0);
-                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
-                cvPoint((int)(i+1)*w_scale, hist_img->height - b),
+                cvRectangle( hist_img_sat, cvPoint((int)i*w_scale , hist_img_sat->height),
+                cvPoint((int)(i+1)*w_scale, hist_img_sat->height - b),
                 CV_RGB(0,255,0), -1, 8, 0 );
                 
                 int c = std::max(cvRound(cvGetReal1D(hist_val->bins,i) - cvGetReal1D(hist_val_ground->bins,i)), 0);
-                cvRectangle( hist_img, cvPoint((int)i*w_scale , hist_img->height),
-                cvPoint((int)(i+1)*w_scale, hist_img->height - c),
+                cvRectangle( hist_img_val, cvPoint((int)i*w_scale , hist_img_val->height),
+                cvPoint((int)(i+1)*w_scale, hist_img_val->height - c),
                 CV_RGB(0,0,255), -1, 8, 0 );
         }
+        //std::cout << '\n';
+        
+        std::cout << "queen: " << sum << '\n';
+        
+        if (queenDetected)
+                std::cout << "Queen detected!\n";
 
-        cvShowImage(window_name, hist_img);
+        cvShowImage(hist_window_1, hist_img_hue);
+        cvShowImage(hist_window_2, hist_img_sat);
+        cvShowImage(hist_window_3, hist_img_val);
         
         /*
         cvNamedWindow( "Image", 1 );
@@ -224,7 +255,9 @@ int Vision::calcHist(IplImage* img, const char* window_name)
         //std::cout << "max r: " << rm << " g: " << gm << " b: " << bm << '\n';
 
         cvReleaseImage( &img_hsv );        
-        cvReleaseImage( &hist_img );
+        cvReleaseImage( &hist_img_val );
+        cvReleaseImage( &hist_img_sat );
+        cvReleaseImage( &hist_img_hue );
         cvReleaseImage( &channel );
         return 0;
 }
