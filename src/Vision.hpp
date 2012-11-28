@@ -36,7 +36,7 @@ struct BoxModel
 class Vision{
 
 public:
-    Vision();
+    Vision(const char* box);
     ~Vision();
     void update();
     void cleanupAfterUpdate();
@@ -141,7 +141,10 @@ public:
     static const char* hist_window_1;
     static const char* hist_window_2;
     static const char* hist_window_3;
-   
+    
+    const char* box;
+    static char base;
+    
     std::vector< std::vector<cv::KeyPoint>* >   sift_keypoints;
     std::vector< int >                          keypoint_match_count;
     std::vector< cv::Mat >                      sift_descriptors;
