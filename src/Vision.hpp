@@ -97,8 +97,8 @@ public:
 
     bool static canReleaseBox() { return releaseBox; }
     
-    void static matchBase(cv::Mat const& src_test);
-    BASE_TYPE static calcHist(IplImage* img, const char* window_name);
+    double static matchBase(cv::Mat const& src_test);
+    BASE_TYPE static calcHistSub(IplImage* img, const char* window_name);
     int static calcHistGround();
     
     static CvCapture* capture;
@@ -154,7 +154,9 @@ public:
     std::vector< std::string>                   base_image_names;
     std::vector< std::vector<cv::KeyPoint>* >   base_sift_keypoints;
     std::vector< cv::Mat >                      base_sift_descriptors;
-    static IplImage* src_base;    
+
+    static IplImage* purple_base;    
+    static IplImage* queen_base;    
     int odv[Vision::CAMERA_WIDTH];
     int boxVec[Vision::CAMERA_WIDTH];
 

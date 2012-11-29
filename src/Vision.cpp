@@ -14,7 +14,8 @@ bool Vision::releaseBox = false;
 int Vision::baseCenterX = 0;
 int Vision::baseCenterY = 0;
 char Vision::base = 'q';
-IplImage* Vision::src_base = cvLoadImage("base2.png");
+IplImage* Vision::queen_base = cvLoadImage("base1_.png");
+IplImage* Vision::purple_base = cvLoadImage("base2_.png");
 
 CvHistogram* Vision::hist_hue_ground = NULL;
 CvHistogram* Vision::hist_sat_ground = NULL;
@@ -112,7 +113,7 @@ Vision::~Vision()
         }
 }
 
-BASE_TYPE Vision::calcHist(IplImage* img, const char* window_name)
+BASE_TYPE Vision::calcHistSub(IplImage* img, const char* window_name)
 {
         /* Always check if the program can find a file */
         if( !img )
@@ -277,7 +278,7 @@ BASE_TYPE Vision::calcHist(IplImage* img, const char* window_name)
         }
         else if (-1.5 <= queenSum && queenSum <= -1.0 && purpleSum <= 0.20)
         {
-                std::cout << "!!!!! PURPLE :O !!!!!!!!!\n";
+                std::cout << "!!!!! PURPLE !!!!!!!!!\n";
                 ret = BASE_PURPLE;
         }
        
@@ -433,12 +434,17 @@ int Vision::calcHistGround()
         return 0;
 }
 
-/*
-void Vision::matchBase(cv::Mat const& src_test)
+double Vision::matchBase(cv::Mat const& src_test)
 {
         Mat hsv_base;
         Mat hsv_test;
         Mat hsv_test_down;
+
+        IplImage* src_base;    
+        if (base == 'p')
+                src_base = purple_base;
+        else
+                src_base = queen_base;
 
         //cv::Rect myROI(120, 40, 400, 400);
 
@@ -450,16 +456,16 @@ void Vision::matchBase(cv::Mat const& src_test)
 
         /// Using 30 bins for hue and 32 for saturation
         int h_bins = 50; int s_bins = 60;
-        int histSize[] = { h_bins };
+        int histSize[] = { h_bins, s_bins };
 
         // hue varies from 0 to 256, saturation from 0 to 180
         float h_ranges[] = { 0, 256 };
         float s_ranges[] = { 0, 180 };
 
-        const float* ranges[] = { h_ranges };
+        const float* ranges[] = { h_ranges, s_ranges };
 
         // Use the o-th and 1-st channels
-        int channels[] = { 0 };
+        int channels[] = { 0, 1 };
 
         /// Histograms
         MatND hist_base;
@@ -467,21 +473,28 @@ void Vision::matchBase(cv::Mat const& src_test)
 
         /// Calculate the histograms for the HSV images
         std::cout << "debug 1\n";
-        calcHist( &hsv_base, 1, channels, Mat(), hist_base, 1, histSize, ranges, true, false );
+        calcHist( &hsv_base, 1, channels, Mat(), hist_base, 2, histSize, ranges, true, false );
         normalize( hist_base, hist_base, 0, 1, NORM_MINMAX, -1, Mat() );
         std::cout << "debug 2\n";
-        //calcHist( &hsv_test, 1, channels, Mat(), hist_test, 2, histSize, ranges, true, false );
-        //normalize( hist_test, hist_test, 0, 1, NORM_MINMAX, -1, Mat() );
-        std::cout << "debug 3\n";
-        /// Apply the histogram comparison methods
+
+        calcHist( &hsv_test, 1, channels, Mat(), hist_test, 2, histSize, ranges, true, false );
+        std::cout << "debug 2.5\n";
+        normalize( hist_test, hist_test, 0, 1, NORM_MINMAX, -1, Mat() );
+        
         for( int i = 0; i < 4; i++ )
         { 
                 int compare_method = i;
                 double base_base = compareHist( hist_base, hist_base, compare_method );
-                //double base_test = compareHist( hist_test, hist_base, compare_method );
+                double base_test = compareHist( hist_test, hist_base, compare_method );
 
-                printf( " Method [%d]  : %f \n", i, base_base);
+                printf( " Method [%d]  : %f %f \n", i, base_base, base_test);
         }
+        
+        return compareHist( hist_test, hist_base, 0 );
+        
+        std::cout << "debug 3\n";
+        /// Apply the histogram comparison methods
+
         std::cout << "debug 4\n";
         int hist_w = 512; int hist_h = 400;
         int bin_w = cvRound( (double) hist_w/h_bins );
@@ -496,7 +509,7 @@ void Vision::matchBase(cv::Mat const& src_test)
         imshow("calcHist Demo", histImage );
         printf( "Done \n" );
 }
-*/
+
 void Vision::update()
 {
         IplImage* prepared = cvCreateImage(cvSize(orig_small->width,orig_small->height),IPL_DEPTH_8U, orig_small->nChannels);
@@ -661,6 +674,7 @@ void Vision::segment_floor(IplImage* src, IplImage* dst, int* odv)
 
 BoxDetectionResult Vision::detectBoxes()
 {
+
         IplImage* frame = orig_small;
         IplImage* frameHD = orig;
         const int BoxROIError = 65;
@@ -1080,7 +1094,7 @@ void* Vision::cameraThread(void* Param)
                         //calcHist(src_base, "Histogram2");
                         origReady = true;
                 }
-                if (windowsEnabled) cvShowImage("mywindow8", orig);
+               // if (windowsEnabled) cvShowImage("mywindow8", orig);
                 if ( (cvWaitKey(10) & 255) == 27 ) break;
         }
 
@@ -1097,10 +1111,9 @@ void* Vision::baseThread(void* Param)
         while (orig_small == NULL) { usleep(100); std::cout << "WOOSH THREAD\n"; }
         while (true)
         {
-        		//std::cout <<runBaseDetection << "\n";
                 if (runBaseDetection)
                 {
-                /// Canny detector
+                        /// Canny detector
                         std::cout << "whoosh\n";
                         Mat detected_edges;
                         Mat orig_small_copy(orig_small, true);
@@ -1157,6 +1170,7 @@ void* Vision::baseThread(void* Param)
                         approx.clear();
                         bases.clear();
                         std::cout << "whoosh5\n";
+                        //if (orig) matchBase(orig);
                         findContours( contourDrawing, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
                         for( int i = 0; i< contours.size(); i++ )
                         {
@@ -1164,8 +1178,8 @@ void* Vision::baseThread(void* Param)
                                 bases.push_back(approx);
                         }
                         Mat contourDrawing2 = Mat::zeros( detected_edges.size(), CV_8UC1 );
-
-
+ 
+                        
                         for( int i = 0; i < bases.size(); i++ )
                         {
                                 Scalar color = Scalar( 255, 255, 255 );
@@ -1184,10 +1198,12 @@ void* Vision::baseThread(void* Param)
                                 int c1 = 0;
                                 int c2 = 0;
                                 int c3 = 0;
+                                
+                                int centerSize = 10;
 
-                                for(int i = baseCenterX - 5; i < baseCenterX+5; i++)
+                                for(int i = baseCenterX - centerSize / 2; i < baseCenterX + centerSize / 2; i++)
                                 {
-                                        for(int j = baseCenterY - 5; j < baseCenterY + 5; j++)
+                                        for(int j = baseCenterY - centerSize / 2; j < baseCenterY + centerSize / 2; j++)
                                         {
                                                 c1 += orig_small_copy.at<Vec3b>( j , i )[0];
                                                 c2 += orig_small_copy.at<Vec3b>( j , i )[1];
@@ -1195,11 +1211,7 @@ void* Vision::baseThread(void* Param)
                                                 orig_small_copy.at<Vec3b>( j , i )[0] = 255;
                                                 orig_small_copy.at<Vec3b>( j , i )[1] = 255;
                                                 orig_small_copy.at<Vec3b>( j , i )[2] = 255;
-                                                //contourDrawing2.at<char>(i,j) = 0;
-                                                //std::cout << i << "," << j << "\n";
-
                                         }
-
                                 }
                                 orig_small_copy.at<Vec3b>( 1 , 1 )[0] = 0;
                                 orig_small_copy.at<Vec3b>( 1 , 1 )[1] = 0;
@@ -1213,11 +1225,13 @@ void* Vision::baseThread(void* Param)
 
                                 std::cout << c1 << "," << c2 << "," << c3 << std::endl;
 
-                                c1 /= 100;
-                                c2 /= 100;
-                                c3 /= 100;
+                                c1 /= centerSize*centerSize;
+                                c2 /= centerSize*centerSize;
+                                c3 /= centerSize*centerSize;
 
                                 std::cout << c1 << "," << c2 << "," << c3 << std::endl;
+                                
+                                
                                 
                                 baseType = BASE_NONE;
                                 if (160 <= c3 && c3 <= 195 &&
@@ -1226,21 +1240,31 @@ void* Vision::baseThread(void* Param)
                                 {
                                         baseType = BASE_QUEEN;
                                 }
-                                else if (140 <= c3 && c3 <= 152 &&
-                                         140 <= c2 && c2 <= 152 &&
-                                         140 <= c1 && c1 <= 152)
+                                else if (120 <= c3 && c3 <= 152 &&
+                                         120 <= c2 && c2 <= 152 &&
+                                         120 <= c1 && c1 <= 152)
                                 {
                                         baseType = BASE_PURPLE;
                                 }
-                                BASE_TYPE histType = calcHist(orig, "Histogram");
-                                if ( baseType != BASE_NONE && baseType == histType && 
+                                
+                                BASE_TYPE histType = BASE_NONE;
+                                if ((orig) && matchBase(orig) > 0.85)
+                                {
+                                        if (base == 'q')
+                                                histType = BASE_QUEEN;
+                                        else if (base == 'p')
+                                                histType = BASE_PURPLE;
+                                }       
+                                /* = calcHistSub(orig, "Histogram")*/
+                                if ( baseType != BASE_NONE/* && baseType == histType*/ && 
                                      ((base == 'q' && baseType == BASE_QUEEN) || (base == 'p' && baseType == BASE_PURPLE)) )
                                 {
                                         releaseBox = true;
                                         std::cout << "Detected: " << baseType << ", " << histType << '\n';
                                 }
+                                
                         }
-                        //if (windowsEnabled) imshow( "mywindow8", contourDrawing2 );
+                        if (windowsEnabled) imshow( "mywindow8", contourDrawing2 );
                         //if (windowsEnabled) imshow( "mywindow10", orig_small_copy );
                }
                else
