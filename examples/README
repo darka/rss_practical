@@ -1,4 +1,0 @@
-C Examples for Phidget21 on Linux
-
-To build manually on Linux:
-gcc example.c -o example -lphidget21

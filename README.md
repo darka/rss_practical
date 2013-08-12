@@ -1,4 +1,4 @@
 rss_practical
 =============
 
-Code for the RSS practical
+Code for the Robotics (RSS) practical
