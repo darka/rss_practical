@@ -6,9 +6,9 @@
 
 class Robot
 {
-public:
+    public:
         Robot(Controller& ctrl, Vision& vision);
-        
+
         static std::pair<size_t, size_t> longestLine(int* vec, size_t size);
         inline void stopAndRotate();
         inline void grabBox();
@@ -16,10 +16,10 @@ public:
         void run(IplImage* detected_floor, IplImage* normalCapture, IplImage* hdCapture);
         void moveBackConsideringFreeSpace(IplImage* detected_floor);
 
-private:
+    private:
         const static int freeSpaceThreshold = 20; 
         const static int irThreshold = 300;
-        
+
         const static bool movementEnabled = true;
         bool lastMoveWasTowardsBox;
         bool hasBox;

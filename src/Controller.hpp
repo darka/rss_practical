@@ -5,50 +5,50 @@
 
 class Controller
 {
-public:
-  explicit Controller();
-  ~Controller();
-  
-  void moveForward();
-  void moveBackward();
-  void moveBackwardLeft();
-  void moveBackwardRight();
-  void turnLeft();
-  void turnRight();
-  void turn(double angle);
-  void stop();
-  void rotateOnSpot();
-  void rotateOnSpotLeft();
-  void rotateOnSpotRight();
-  void openServo();
-  void closeServo();
-  void turnAt(double angle);
-  
-  int getIRLeftValue();
-  int getIRRightValue();
-  int getWhiskerLeftValue();
-  int getWhiskerRightValue();
-  
-  double speed;
-  double speedLeftFactor;
-  double speedRightFactor;
-  double accel;
-  double accelLeftFactor;
-  double accelRightFactor;
-  double backwardTurnSlowFactor;
-  double backwardTurnFastFactor;
-  double servoOpen;
-  double servoClosed;
-  
-  int rotationOnSpotSpeed;
-  CPhidgetMotorControlHandle motoControl;
-  CPhidgetInterfaceKitHandle ifKit;
-  
-  static bool whiskersTouched;
-  
-private:
-  CPhidgetAdvancedServoHandle servo;
-  int getSensorValue(int sensorId);
+    public:
+        explicit Controller();
+        ~Controller();
+
+        void moveForward();
+        void moveBackward();
+        void moveBackwardLeft();
+        void moveBackwardRight();
+        void turnLeft();
+        void turnRight();
+        void turn(double angle);
+        void stop();
+        void rotateOnSpot();
+        void rotateOnSpotLeft();
+        void rotateOnSpotRight();
+        void openServo();
+        void closeServo();
+        void turnAt(double angle);
+
+        int getIRLeftValue();
+        int getIRRightValue();
+        int getWhiskerLeftValue();
+        int getWhiskerRightValue();
+
+        double speed;
+        double speedLeftFactor;
+        double speedRightFactor;
+        double accel;
+        double accelLeftFactor;
+        double accelRightFactor;
+        double backwardTurnSlowFactor;
+        double backwardTurnFastFactor;
+        double servoOpen;
+        double servoClosed;
+
+        int rotationOnSpotSpeed;
+        CPhidgetMotorControlHandle motoControl;
+        CPhidgetInterfaceKitHandle ifKit;
+
+        static bool whiskersTouched;
+
+    private:
+        CPhidgetAdvancedServoHandle servo;
+        int getSensorValue(int sensorId);
 };
 
 
