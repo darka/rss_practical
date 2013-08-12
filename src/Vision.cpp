@@ -107,18 +107,14 @@ int Vision::calcHistGround()
     /* Always check if the program can find a file */
 
 
-    std::cout << "hi! 1\n";
     IplImage* img = cvLoadImage("ground.png");
     if( !img )
         return -1;
     IplImage* img_hsv = cvCreateImage( cvGetSize(img), img->depth, img->nChannels );
-    std::cout << "hi! 2\n";
     IplImage* channel = cvCreateImage( cvGetSize(img), 8, 1 );
     cvCvtColor(img,img_hsv,CV_BGR2HSV);
-    std::cout << "hi! 3\n";
     IplImage *hist_img = cvCreateImage(cvSize(CAMERA_WIDTH,CAMERA_HEIGHT), 8, 3);
     cvSet( hist_img, cvScalarAll(255), 0 );
-    std::cout << "hi! 4\n";
 
     int hist_size = 256;      
     float range[]={0,256};
@@ -128,28 +124,23 @@ int Vision::calcHistGround()
     float max = 0.0;
     float w_scale = 0.0;
 
-    std::cout << "hi! 5\n";
 
     /* Create a 1-D Arrays to hold the histograms */
     hist_hue_ground = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
     hist_sat_ground = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
     hist_val_ground = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
-    std::cout << "hi! 6\n";
     /* Set image to obtain RED as Channel of Interest (COI) */
     cvSetImageCOI(img,1);
     cvCopy(img,channel);
     cvResetImageROI(img);
-    std::cout << "hi! 7\n";
     /* Calculate histogram of the Image and store it in the array */
     cvCalcHist( &channel, hist_hue_ground, 0, NULL );
     cvNormalizeHist(hist_hue_ground, 1.0);
-    std::cout << "hi! 8\n";
     /* Calculate and Plot the histograms Green and Blue channels as well */
     /* Green channel */
     cvSetImageCOI(img,2);
     cvCopy(img,channel);
     cvResetImageROI(img);
-    std::cout << "hi! 9\n";
     cvCalcHist( &channel, hist_sat_ground, 0, NULL );
     cvNormalizeHist(hist_sat_ground, 1.0);
 
@@ -157,7 +148,6 @@ int Vision::calcHistGround()
     cvSetImageCOI(img,3);
     cvCopy(img,channel);
     cvResetImageROI(img);
-    std::cout << "hi! 10\n";
     cvCalcHist( &channel, hist_val_ground, 0, NULL );
     cvNormalizeHist(hist_val_ground, 1.0);
 
@@ -202,13 +192,10 @@ double Vision::matchBase(cv::Mat const& src_test)
     MatND hist_test;
 
     // Calculate the histograms for the HSV images
-    std::cout << "debug 1\n";
     calcHist( &hsv_base, 1, channels, Mat(), hist_base, 2, histSize, ranges, true, false );
     normalize( hist_base, hist_base, 0, 1, NORM_MINMAX, -1, Mat() );
-    std::cout << "debug 2\n";
 
     calcHist( &hsv_test, 1, channels, Mat(), hist_test, 2, histSize, ranges, true, false );
-    std::cout << "debug 2.5\n";
     normalize( hist_test, hist_test, 0, 1, NORM_MINMAX, -1, Mat() );
 
     for( int i = 0; i < 4; i++ )
@@ -222,10 +209,8 @@ double Vision::matchBase(cv::Mat const& src_test)
 
     return compareHist( hist_test, hist_base, 0 );
 
-    std::cout << "debug 3\n";
     // Apply the histogram comparison methods
 
-    std::cout << "debug 4\n";
     int hist_w = 512; int hist_h = 400;
     int bin_w = cvRound( (double) hist_w/h_bins );
     Mat histImage( hist_h, hist_w, CV_8UC3, Scalar( 0,0,0) );
@@ -638,8 +623,6 @@ void Vision::initSift()
         sift_keypoints.push_back(keypoints_image);
         sift_descriptors.push_back(descriptors_image);
         std::cout << "Keypoints: " << sift_keypoints[i]->size() << '\n';
-
-        std::cout << "Hi there.\n";
     }
 }
 
@@ -821,13 +804,12 @@ void* Vision::baseThread(void* Param)
     int id = *((int*)Param);
     // Perform some action
     // Count down from 10 using different speed depending on data
-    while (orig_small == NULL) { usleep(100); std::cout << "WOOSH THREAD\n"; }
+    while (orig_small == NULL) { usleep(100); }
     while (true)
     {
         if (runBaseDetection)
         {
             /// Canny detector
-            std::cout << "whoosh\n";
             Mat detected_edges;
             Mat orig_small_copy(orig_small, true);
             cvtColor( orig_small_copy, detected_edges, CV_BGR2GRAY );
@@ -835,7 +817,6 @@ void* Vision::baseThread(void* Param)
             cv::GaussianBlur(detected_edges, sharpened, cv::Size(0, 0), W1);
             cv::addWeighted(detected_edges, W2/10.0, sharpened, -W3/10.0, W4, sharpened);
 
-            std::cout << "whoosh2\n";
 
             Canny( sharpened, sharpened, lowThreshold, highThreshold, 3, true );
             dilate(sharpened, sharpened, getStructuringElement( MORPH_RECT,
@@ -845,7 +826,6 @@ void* Vision::baseThread(void* Param)
             /// Using Canny's output as a mask, we display our result
             dst = Scalar::all(0);
 
-            std::cout << "whoosh3\n";
             Mat(orig_small).copyTo( dst, sharpened);
             vector<vector<Point> > contours;
             vector<Vec4i> hierarchy;
@@ -861,14 +841,12 @@ void* Vision::baseThread(void* Param)
 
             /// Draw contours
             Mat contourDrawing = Mat::zeros( detected_edges.size(), CV_8UC1 );
-            std::cout << "whoosh4\n";
             for( int i = 0; i< bases.size(); i++ )
             {
                 Mat m(bases[i]);
                 double area = contourArea(m);
                 if(area > 500 && area < 2000)
                 {
-                    std::cout << area << "\n";
                     Scalar color = Scalar( 255, 255, 255 );
                     drawContours( contourDrawing, bases, i, color, CV_FILLED, 8, hierarchy, 0, Point(0,0) );
                 }
@@ -880,7 +858,6 @@ void* Vision::baseThread(void* Param)
             hierarchy.clear();
             approx.clear();
             bases.clear();
-            std::cout << "whoosh5\n";
             findContours( contourDrawing, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
             for( int i = 0; i< contours.size(); i++ )
             {
